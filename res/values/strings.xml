@@ -2,6 +2,9 @@
 <resources>
 
     <string name="app_name">Fake Long Exposure Camera</string>
+    <string name="click_again_to_exit">Click again to exit</string>
+    <string name="error">Error</string>
+    <string name="ok">OK</string>
     <string name="failed_to_open_camera">Failed to open camera</string>
     <string name="failed_to_create_directory">Failed to create directory</string>
     <string name="failed_to_write_file">Failed to write file</string>

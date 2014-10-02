@@ -10,7 +10,9 @@ import java.util.List;
 
 import android.annotation.SuppressLint;
 import android.app.Activity;
+import android.app.AlertDialog;
 import android.content.Context;
+import android.content.DialogInterface;
 import android.graphics.Bitmap;
 import android.graphics.Bitmap.Config;
 import android.hardware.Camera;
@@ -67,21 +69,54 @@ Runnable {
 		mResultPreview = imagePreview;
 	}
 	
-	@Override
-	public void surfaceChanged(SurfaceHolder _holder, int format, int width, int height) {
-		
+	public Camera getCamera() {
+		return mCamera;
 	}
 	
-	/** Open camera, set parameters */
+	@Override
+	public void surfaceChanged(SurfaceHolder _holder, int format, int width, int height) {
+		Log.i(TAG, "surfaceChanged()");
+	}
+	
+	/** Reset camera */
 	@Override
 	public void surfaceCreated(SurfaceHolder holder) {
+		Log.i(TAG, "surfaceCreated()");
+		resetCamera();
+	}
+	
+	/** Release camera */
+	@Override
+	public void surfaceDestroyed(SurfaceHolder holder) {
+		Log.i(TAG, "surfaceDestroyed()");
+		releaseCamera();
+	}
+
+	/** Open camera, set parameters */
+	public void resetCamera() {
+		releaseCamera();
+		
 		// Open camera
+		try {
 		mCamera = Camera.open();
+		} catch (Exception e) {
+			e.printStackTrace();
+			mCamera = null;
+		}
 		if(mCamera == null)
 		{
-			Toast.makeText(getContext(), getResources().getString(R.string.failed_to_open_camera), 
-					Toast.LENGTH_SHORT).show();
-			((Activity)getContext()).finish();
+			new AlertDialog.Builder(getContext())
+				.setTitle(getResources().getString(R.string.error))
+				.setMessage(getResources().getString(R.string.failed_to_open_camera))
+				.setPositiveButton(getResources().getString(R.string.ok),
+					new DialogInterface.OnClickListener() {
+						@Override
+						public void onClick(DialogInterface dialog, int which) {
+							((Activity)CameraPreview.this.getContext()).finish();
+						}
+					}
+				)
+				.show();
 			return;
 		}
 		
@@ -134,9 +169,7 @@ Runnable {
         mCamera.startPreview();
 	}
 	
-	/** Release camera */
-	@Override
-	public void surfaceDestroyed(SurfaceHolder holder) {
+	public void releaseCamera() {
 		if(mCamera != null)
 		{
 			mCamera.stopPreview();
@@ -208,12 +241,6 @@ Runnable {
 	        }
 	        mFrameCount++;
 	        
-			Log.i(TAG, "Dealing picture");
-			if(mFrameCount == 0)
-			{
-				Log.e(TAG, "mFrameCount == 0");
-				continue;
-			}
 			Log.i(TAG, "mFrameCount " + mFrameCount);
 			
 			// Blend pictures and show
@@ -231,8 +258,8 @@ Runnable {
 		}
 	};
 	
-	/** Save the picture, resize this view */
 	
+	/** Save the picture, resize this view */
 	@SuppressLint("HandlerLeak")
 	protected Handler mExposingFinish = new Handler() {
 		@SuppressLint("SimpleDateFormat")
@@ -278,7 +305,6 @@ Runnable {
 		}
 	};
 	
-	
 	private void decodeYUV420SP(int[] rgb, byte[] yuv420sp, int width, int height) {
 		final int frameSize = width * height;
 
@@ -309,7 +335,6 @@ Runnable {
 		}
 	}
 	
-
 	protected interface PictureBlender {
 		/** Called by exposing thread */
 		Bitmap blend();
