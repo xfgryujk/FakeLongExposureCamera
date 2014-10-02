@@ -1,6 +1,10 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
 
-    <string name="app_name">伪长曝光相机</string>
+    <string name="app_name">Fake Long Exposure Camera</string>
+    <string name="failed_to_open_camera">Failed to open camera</string>
+    <string name="failed_to_create_directory">Failed to create directory</string>
+    <string name="failed_to_write_file">Failed to write file</string>
+    <string name="saved_to">Saved to</string>
 
 </resources>

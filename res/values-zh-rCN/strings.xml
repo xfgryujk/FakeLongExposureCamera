@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+
+    <string name="app_name">伪长曝光相机</string>
+    <string name="failed_to_open_camera">打开相机失败</string>
+    <string name="failed_to_create_directory">创建文件夹失败</string>
+    <string name="failed_to_write_file">写文件失败</string>
+    <string name="saved_to">已保存到</string>
+
+</resources>

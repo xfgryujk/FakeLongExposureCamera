@@ -24,7 +24,7 @@ import android.view.SurfaceHolder;
 import android.view.SurfaceView;
 import android.view.View;
 import android.view.View.OnClickListener;
-import android.view.ViewGroup.LayoutParams;
+import android.widget.FrameLayout;
 import android.widget.ImageView;
 import android.widget.Toast;
 
@@ -38,7 +38,7 @@ Runnable {
 	protected int mPictureWidth, mPictureHeight;
 	
 	protected boolean mIsExposing       = false;
-	protected boolean mIsShutterForbidden = false;
+	protected boolean mIsShutterEnabled = true;
 	
 	/** YUV */
 	protected byte[] mPreviewData;
@@ -79,8 +79,9 @@ Runnable {
 		mCamera = Camera.open();
 		if(mCamera == null)
 		{
-			Toast.makeText(this.getContext(), "打开相机失败", Toast.LENGTH_SHORT).show();
-			((Activity)this.getContext()).finish();
+			Toast.makeText(getContext(), getResources().getString(R.string.failed_to_open_camera), 
+					Toast.LENGTH_SHORT).show();
+			((Activity)getContext()).finish();
 			return;
 		}
 		
@@ -148,18 +149,19 @@ Runnable {
 	/** Auto focus */
 	@Override
 	public void onClick(View view) { 
-		mCamera.autoFocus(null);
+		if(!mIsExposing)
+			mCamera.autoFocus(null);
 	}
 	
 	/** Start or stop exposing */
 	public void onShutterClick() {
-		if(!mIsShutterForbidden)
+		if(mIsShutterEnabled)
 			if(mIsExposing)
 			{
 				Log.i(TAG, "Stop exposing");
-				mIsExposing         = false;
+				mIsExposing       = false;
 				// Wait for exposing thread
-				mIsShutterForbidden = true;
+				mIsShutterEnabled = false;
 			}
 			else
 			{
@@ -172,11 +174,20 @@ Runnable {
 		        (new Thread(this)).start();
 
 				// Resize
-				LayoutParams lp = getLayoutParams();
-				lp.width  = mPictureWidth / 4;
-				lp.height = mPictureHeight / 4;
+				FrameLayout.LayoutParams lp = (FrameLayout.LayoutParams)getLayoutParams();
+				lp.leftMargin = 20;
+				lp.topMargin  = 20;
+				if(mPictureWidth > mPictureHeight)
+				{
+					lp.width  = 200;
+					lp.height = mPictureHeight * 200 / mPictureWidth;
+				}
+				else
+				{
+					lp.width  = mPictureWidth * 200 / mPictureHeight;
+					lp.height = 200;
+				}
 				setLayoutParams(lp);
-				setPadding(50, 50, 0, 0);
 			}
 	}
 	
@@ -201,7 +212,6 @@ Runnable {
 			if(mFrameCount == 0)
 			{
 				Log.e(TAG, "mFrameCount == 0");
-				mIsShutterForbidden = false;
 				continue;
 			}
 			Log.i(TAG, "mFrameCount " + mFrameCount);
@@ -221,6 +231,8 @@ Runnable {
 		}
 	};
 	
+	/** Save the picture, resize this view */
+	
 	@SuppressLint("HandlerLeak")
 	protected Handler mExposingFinish = new Handler() {
 		@SuppressLint("SimpleDateFormat")
@@ -233,31 +245,39 @@ Runnable {
 	            File dir = new File(storagePath);
 	            if(!dir.exists())
 	                if(!dir.mkdirs()) {
-	                    Toast.makeText(getContext(), "创建文件夹失败", Toast.LENGTH_SHORT).show();
+	                    Toast.makeText(getContext(), getResources().getString(R.string.failed_to_create_directory), 
+	                    		Toast.LENGTH_SHORT).show();
 	                    return;
 	                }
 	            File file = new File(storagePath + "/" + new SimpleDateFormat("yyyyMMdd_HHmmss").format(new Date()) + ".jpg");
 	            
 	            BufferedOutputStream bos = new BufferedOutputStream(new FileOutputStream(file));
-	            mResultBitmap.compress(Bitmap.CompressFormat.JPEG, 100, bos);
-	            bos.flush();
+	            if(mResultBitmap.compress(Bitmap.CompressFormat.JPEG, 100, bos))
+	            {
+		            bos.flush();
+		            Toast.makeText(getContext(), getResources().getString(R.string.saved_to) + " " + file.getPath(), 
+		            		Toast.LENGTH_SHORT).show();
+	            }
+	            else
+	            	Toast.makeText(getContext(), getResources().getString(R.string.failed_to_write_file) + file.getPath(), 
+		            		Toast.LENGTH_SHORT).show();
 	            bos.close();
-	            
-	            Toast.makeText(getContext(), "已保存到" + file.getPath(), Toast.LENGTH_SHORT).show();
 	        } catch(Exception e) {
 	            e.printStackTrace();
 	        }
 			
 			// Resize
-			LayoutParams lp = getLayoutParams();
-			lp.width  = LayoutParams.MATCH_PARENT;
-			lp.height = LayoutParams.MATCH_PARENT;
+			FrameLayout.LayoutParams lp = (FrameLayout.LayoutParams)getLayoutParams();
+			lp.leftMargin = 0;
+			lp.topMargin  = 0;
+			lp.width      = FrameLayout.LayoutParams.MATCH_PARENT;
+			lp.height     = FrameLayout.LayoutParams.MATCH_PARENT;
 			setLayoutParams(lp);
-			setPadding(0, 0, 0, 0);
 			
-			mIsShutterForbidden = false;
+			mIsShutterEnabled = true;
 		}
 	};
+	
 	
 	private void decodeYUV420SP(int[] rgb, byte[] yuv420sp, int width, int height) {
 		final int frameSize = width * height;
@@ -288,6 +308,7 @@ Runnable {
 		 	}
 		}
 	}
+	
 
 	protected interface PictureBlender {
 		/** Called by exposing thread */
