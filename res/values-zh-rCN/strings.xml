@@ -2,7 +2,28 @@
 <resources>
 
     <string name="app_name">伪长曝光相机</string>
+    
     <string name="click_again_to_exit">再按一次退出程序</string>
+    
+    <string name="blending_mode">混合模式</string>
+    <string-array name="blending_modes_description">
+        <item >平均值</item>
+        <item >最大值</item>
+        <item >滤色</item>
+    </string-array>
+    
+    <string name="path">保存路径</string>
+    <string name="yes">确定</string>
+    <string name="no">取消</string>
+    
+    <string name="EV">曝光度</string>
+    
+    <string name="white_balance">白平衡</string>
+    
+    <string name="resolution">分辨率</string>
+    
+    <string name="ISO">感光度</string>
+    
     <string name="error">错误</string>
     <string name="ok">确定</string>
     <string name="failed_to_open_camera">打开相机失败</string>

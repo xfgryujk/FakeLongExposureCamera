@@ -9,7 +9,6 @@ import java.util.Date;
 import java.util.List;
 
 import android.annotation.SuppressLint;
-import android.app.Activity;
 import android.app.AlertDialog;
 import android.content.Context;
 import android.content.DialogInterface;
@@ -18,7 +17,6 @@ import android.graphics.Bitmap.Config;
 import android.hardware.Camera;
 import android.hardware.Camera.PreviewCallback;
 import android.os.Bundle;
-import android.os.Environment;
 import android.os.Handler;
 import android.os.Message;
 import android.util.AttributeSet;
@@ -113,7 +111,7 @@ Runnable {
 					new DialogInterface.OnClickListener() {
 						@Override
 						public void onClick(DialogInterface dialog, int which) {
-							((Activity)CameraPreview.this.getContext()).finish();
+							mActivity.finish();
 						}
 					}
 				)
@@ -123,25 +121,17 @@ Runnable {
 		
 		// Set parameters
 		Camera.Parameters params = mCamera.getParameters();
-
-		// Max preview size
+		
+		params.setExposureCompensation(SettingsManager.mEV);
+		params.setWhiteBalance(SettingsManager.mWhiteBalance);
 		List<Camera.Size> sizes = params.getSupportedPreviewSizes();
-		int maxPixels = 0, pixels;
-		int largestWidth = 0, largestHeight = 0;
-		for(Camera.Size size : sizes)
-		{
-			pixels = size.width * size.height;
-			if(maxPixels < pixels)
-			{
-				maxPixels = pixels;
-				largestWidth  = size.width;
-				largestHeight = size.height;
-			}
-		}
-		mPictureWidth  = largestWidth;
-		mPictureHeight = largestHeight;
-		params.setPreviewSize(largestWidth, largestHeight);
-		Log.i(TAG, "preview size " + largestWidth + " * " + largestHeight);
+		mPictureWidth  = sizes.get(SettingsManager.mResolution).width;
+		mPictureHeight = sizes.get(SettingsManager.mResolution).height;
+		params.setPreviewSize(mPictureWidth, mPictureHeight);
+		
+		Log.i(TAG, "EV " + SettingsManager.mEV);
+		Log.i(TAG, "white balance " + SettingsManager.mWhiteBalance);
+		Log.i(TAG, "preview size " + mPictureWidth + " * " + mPictureHeight);
 
 		mCamera.setParameters(params);
 		
@@ -195,6 +185,10 @@ Runnable {
 			mIsExposing = false;
 			// Wait for exposing thread
 			mActivity.mButtonShutter.setVisibility(INVISIBLE);
+    		synchronized (this)
+    		{
+    			notify();
+    		}
 		}
 		else
 		{
@@ -244,26 +238,24 @@ Runnable {
 	            decodeYUV420SP(mPreviewRGBData, mPreviewData, mPictureWidth, mPictureHeight);
 	        }
 	        mFrameCount++;
-	        
-			Log.i(TAG, "mFrameCount " + mFrameCount);
 			
 			// Blend pictures and show
-			mResultBitmap = mPictureBlender[mPictureBlenderIndex].blend();
+			mResultBitmap = mPictureBlender[SettingsManager.mBlendingMode].blend();
 			mHandler.sendEmptyMessage(MSG_UPDATA_RESULT_PREVIEW);
 		}
+		Log.i(TAG, "mFrameCount " + mFrameCount);
+		
 		// Exposing finish
 		mHandler.sendEmptyMessage(MSG_EXPOSING_FINISH);
 
 		// Save the picture
-		// Temporary path
-		final String storagePath = Environment.getExternalStorageDirectory().getPath() + "/FakeLongExposureCamera";
 		try {
         	Bundle bundle = new Bundle();
         	Message msg = new Message();
         	msg.what = MSG_TOAST;
         	
         	// Create file
-            File dir = new File(storagePath);
+            File dir = new File(SettingsManager.mPath);
             if(!dir.exists())
                 if(!dir.mkdirs()) {
                     bundle.putString("msg", getResources().getString(R.string.failed_to_create_directory));
@@ -271,7 +263,7 @@ Runnable {
                 	mHandler.sendMessage(msg);
                     return;
                 }
-            File file = new File(storagePath + "/" + new SimpleDateFormat("yyyyMMdd_HHmmss").format(new Date()) + ".jpg");
+            File file = new File(SettingsManager.mPath + "/" + new SimpleDateFormat("yyyyMMdd_HHmmss").format(new Date()) + ".jpg");
             
             // Write file
             BufferedOutputStream bos = new BufferedOutputStream(new FileOutputStream(file));
@@ -296,7 +288,6 @@ Runnable {
 	protected static final int MSG_EXPOSING_FINISH = 2;
 	protected static final int MSG_RESTORE = 3;
 	protected static final int MSG_TOAST = 4;
-	
 	/** Save the picture, resize this view */
 	@SuppressLint("HandlerLeak")
 	protected Handler mHandler = new Handler() {
@@ -326,6 +317,7 @@ Runnable {
 			case MSG_RESTORE:
 				CameraPreview.this.setVisibility(VISIBLE);
 				mActivity.mResultPreview.setVisibility(INVISIBLE);
+				mActivity.mResultPreview.setImageBitmap(null);
 		        mActivity.mButtonSetting.setVisibility(VISIBLE);
 				mActivity.mButtonShutter.setVisibility(VISIBLE);
 				break;
@@ -373,65 +365,93 @@ Runnable {
 		Bitmap blend();
 	}
 	
-	protected int mPictureBlenderIndex = 0;
 	protected final PictureBlender[] mPictureBlender = {
-			// Average
-			new PictureBlender() {
-				@Override
-				public Bitmap blend() {
-			        for(int i = 0; i < mPreviewRGBData.length; i++)
-			        {
-			            mPictureData[i * 3]     += (mPreviewRGBData[i] & 0x00FF0000) >> 16;
-			            mPictureData[i * 3 + 1] += (mPreviewRGBData[i] & 0x0000FF00) >> 8;
-			            mPictureData[i * 3 + 2] += (mPreviewRGBData[i] & 0x000000FF);
-			        }
-			        
-					/** RGB1 RGB2 ... */
-					int[] data = new int[mPictureWidth * mPictureHeight];
-					for(int i = 0; i < data.length; i++)
-					{
-						data[i] = 0xFF000000;
-						data[i] |= (mPictureData[i * 3]     / mFrameCount) << 16;
-						data[i] |= (mPictureData[i * 3 + 1] / mFrameCount) << 8;
-						data[i] |=  mPictureData[i * 3 + 2] / mFrameCount;
-					}
-					Bitmap bmp = Bitmap.createBitmap(mPictureWidth, mPictureHeight, Config.RGB_565);
-					bmp.setPixels(data, 0, mPictureWidth, 0, 0, mPictureWidth, mPictureHeight);
-					return bmp;
+		// Average
+		new PictureBlender() {
+			@Override
+			public Bitmap blend() {
+				for(int i = 0; i < mPreviewRGBData.length; i++)
+			    {
+			        mPictureData[i * 3]     += (mPreviewRGBData[i] & 0x00FF0000) >> 16;
+			        mPictureData[i * 3 + 1] += (mPreviewRGBData[i] & 0x0000FF00) >> 8;
+			        mPictureData[i * 3 + 2] += (mPreviewRGBData[i] & 0x000000FF);
+			    }
+			    
+				/** RGB1 RGB2 ... */
+				int[] data = new int[mPictureWidth * mPictureHeight];
+				for(int i = 0; i < data.length; i++)
+				{
+					data[i] = 0xFF000000;
+					data[i] |= (mPictureData[i * 3]     / mFrameCount) << 16;
+					data[i] |= (mPictureData[i * 3 + 1] / mFrameCount) << 8;
+					data[i] |=  mPictureData[i * 3 + 2] / mFrameCount;
 				}
-			},
-
-			// Max
-			new PictureBlender() {
-				@Override
-				public Bitmap blend() {
-			        for(int i = 0; i < mPreviewRGBData.length; i++)
-			        {
-			        	int sum1 = mPictureData[i * 3] + mPictureData[i * 3 + 1] + mPictureData[i * 3 + 2];
-			        	int r = (mPreviewRGBData[i] & 0x00FF0000) >> 16;
-			        	int g = (mPreviewRGBData[i] & 0x0000FF00) >> 8;
-						int b = mPreviewRGBData[i] & 0x000000FF;
-			        	if(r + g + b > sum1)
-			        	{
-			        		mPictureData[i * 3]     = r;
-			        		mPictureData[i * 3 + 1] = g;
-			        		mPictureData[i * 3 + 2] = b;
-			        	}
-			        }
-
-					/** RGB1 RGB2 ... */
-					int[] data = new int[mPictureWidth * mPictureHeight];
-					for(int i = 0; i < data.length; i++)
-					{
-						data[i] = 0xFF000000;
-						data[i] |= mPictureData[i * 3]     << 16;
-						data[i] |= mPictureData[i * 3 + 1] << 8;
-						data[i] |= mPictureData[i * 3 + 2];
-					}
-					Bitmap bmp = Bitmap.createBitmap(mPictureWidth, mPictureHeight, Config.RGB_565);
-					bmp.setPixels(data, 0, mPictureWidth, 0, 0, mPictureWidth, mPictureHeight);
-					return bmp;
-				}
+				Bitmap bmp = Bitmap.createBitmap(mPictureWidth, mPictureHeight, Config.RGB_565);
+				bmp.setPixels(data, 0, mPictureWidth, 0, 0, mPictureWidth, mPictureHeight);
+				return bmp;
 			}
+		},
+
+		// Max
+		new PictureBlender() {
+			@Override
+			public Bitmap blend() {
+			    for(int i = 0; i < mPreviewRGBData.length; i++)
+			    {
+			        int sum1 = mPictureData[i * 3] + mPictureData[i * 3 + 1] + mPictureData[i * 3 + 2];
+			        int r = (mPreviewRGBData[i] & 0x00FF0000) >> 16;
+			        int g = (mPreviewRGBData[i] & 0x0000FF00) >> 8;
+					int b = mPreviewRGBData[i] & 0x000000FF;
+			        if(r + g + b > sum1)
+			        {
+			        	mPictureData[i * 3]     = r;
+			        	mPictureData[i * 3 + 1] = g;
+			        	mPictureData[i * 3 + 2] = b;
+			        }
+			    }
+
+				/** RGB1 RGB2 ... */
+				int[] data = new int[mPictureWidth * mPictureHeight];
+				for(int i = 0; i < data.length; i++)
+				{
+					data[i] = 0xFF000000;
+					data[i] |= mPictureData[i * 3]     << 16;
+					data[i] |= mPictureData[i * 3 + 1] << 8;
+					data[i] |= mPictureData[i * 3 + 2];
+				}
+				Bitmap bmp = Bitmap.createBitmap(mPictureWidth, mPictureHeight, Config.RGB_565);
+				bmp.setPixels(data, 0, mPictureWidth, 0, 0, mPictureWidth, mPictureHeight);
+				return bmp;
+			}
+		},
+
+		// Screen
+		new PictureBlender() {
+			@Override
+			public Bitmap blend() {
+			    for(int i = 0; i < mPreviewRGBData.length; i++)
+			    {
+			        mPictureData[i * 3]     = 255 - (255 - mPictureData[i * 3]) 
+			        		* (255 - ((mPreviewRGBData[i] & 0x00FF0000) >> 16)) / 255;
+			        mPictureData[i * 3 + 1] = 255 - (255 - mPictureData[i * 3 + 1]) 
+			        		* (255 - ((mPreviewRGBData[i] & 0x0000FF00) >> 8)) / 255;
+			        mPictureData[i * 3 + 2] = 255 - (255 - mPictureData[i * 3 + 2]) 
+			        		* (255 - (mPreviewRGBData[i] & 0x000000FF)) / 255;
+			    }
+
+				/** RGB1 RGB2 ... */
+				int[] data = new int[mPictureWidth * mPictureHeight];
+				for(int i = 0; i < data.length; i++)
+				{
+					data[i] = 0xFF000000;
+					data[i] |= mPictureData[i * 3]     << 16;
+					data[i] |= mPictureData[i * 3 + 1] << 8;
+					data[i] |= mPictureData[i * 3 + 2];
+				}
+				Bitmap bmp = Bitmap.createBitmap(mPictureWidth, mPictureHeight, Config.RGB_565);
+				bmp.setPixels(data, 0, mPictureWidth, 0, 0, mPictureWidth, mPictureHeight);
+				return bmp;
+			}
+		}
 	};
 }

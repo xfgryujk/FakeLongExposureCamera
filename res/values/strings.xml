@@ -2,7 +2,28 @@
 <resources>
 
     <string name="app_name">Fake Long Exposure Camera</string>
+    
     <string name="click_again_to_exit">Click again to exit</string>
+    
+    <string name="blending_mode">Blending mode</string>
+    <string-array name="blending_modes_description">
+        <item >Average</item>
+        <item >Max</item>
+        <item >Screen</item>
+    </string-array>
+    
+    <string name="path">Path</string>
+    <string name="yes">Yes</string>
+    <string name="no">No</string>
+    
+    <string name="EV">EV</string>
+    
+    <string name="white_balance">White balance</string>
+    
+    <string name="resolution">Resolution</string>
+    
+    <string name="ISO">ISO</string>
+    
     <string name="error">Error</string>
     <string name="ok">OK</string>
     <string name="failed_to_open_camera">Failed to open camera</string>

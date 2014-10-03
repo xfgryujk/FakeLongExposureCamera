@@ -1,23 +1,19 @@
 package com.xfgryujk.longexposurecamera;
 
 import android.app.Activity;
-import android.app.AlertDialog;
 import android.content.pm.ActivityInfo;
 import android.os.Bundle;
 import android.view.KeyEvent;
-import android.view.LayoutInflater;
 import android.view.View;
 import android.view.View.OnClickListener;
 import android.view.Window;
 import android.view.WindowManager;
-import android.widget.AdapterView;
-import android.widget.AdapterView.OnItemClickListener;
 import android.widget.Button;
 import android.widget.ImageView;
-import android.widget.ListView;
 import android.widget.Toast;
 
-public class MainActivity extends Activity implements OnItemClickListener {
+public class MainActivity extends Activity {
+	@SuppressWarnings("unused")
 	private static final String TAG = "MainActivity";
 	
 	public CameraPreview mCameraPreview;
@@ -54,18 +50,8 @@ public class MainActivity extends Activity implements OnItemClickListener {
 			}
 		});
 		
-		mButtonSetting.setOnClickListener(new OnClickListener() { 
-			@Override
-			public void onClick(View buttonView) { 
-				AlertDialog.Builder builder = new AlertDialog.Builder(MainActivity.this);
-				View view = LayoutInflater.from(MainActivity.this).inflate(R.layout.dialog_settings, null);
-				
-				ListView settingsList = (ListView)view.findViewById(R.id.settings_list);
-				settingsList.setOnItemClickListener(MainActivity.this);
-				
-				builder.setView(view).create().show();
-			}
-		});
+		SettingsManager.initialize(this);
+		mButtonSetting.setOnClickListener(SettingsManager.mOnButtonSettingClick);
 	}
 
 	private long mLastBackTime = 0;
@@ -90,10 +76,5 @@ public class MainActivity extends Activity implements OnItemClickListener {
 	protected void onDestroy() {
 		super.onDestroy();
 		System.exit(0);
-	}
-	
-	@Override
-	public void onItemClick(AdapterView<?> adapterView, View view, int position, long id) {
-		
 	}
 }
