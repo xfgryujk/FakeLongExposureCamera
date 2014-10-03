@@ -17,6 +17,7 @@ import android.graphics.Bitmap;
 import android.graphics.Bitmap.Config;
 import android.hardware.Camera;
 import android.hardware.Camera.PreviewCallback;
+import android.os.Bundle;
 import android.os.Environment;
 import android.os.Handler;
 import android.os.Message;
@@ -27,20 +28,18 @@ import android.view.SurfaceView;
 import android.view.View;
 import android.view.View.OnClickListener;
 import android.widget.FrameLayout;
-import android.widget.ImageView;
 import android.widget.Toast;
 
 public class CameraPreview extends SurfaceView implements SurfaceHolder.Callback, OnClickListener, 
 Runnable {
-	private final String TAG = "CameraPreview";
+	private static final String TAG = "CameraPreview";
 	
 	protected SurfaceHolder mHolder;
-	protected ImageView mResultPreview;
+	protected MainActivity mActivity;
 	protected Camera mCamera;
 	protected int mPictureWidth, mPictureHeight;
 	
-	protected boolean mIsExposing       = false;
-	protected boolean mIsShutterEnabled = true;
+	protected boolean mIsExposing = false;
 	
 	/** YUV */
 	protected byte[] mPreviewData;
@@ -55,22 +54,24 @@ Runnable {
 	
 	public CameraPreview(Context context) {
 		super(context);
+		mActivity = (MainActivity)context;
 		mHolder = getHolder();
 		mHolder.addCallback(this);
 	}
 	
 	public CameraPreview(Context context, AttributeSet attrs) {
 		super(context, attrs);
+		mActivity = (MainActivity)context;
 		mHolder = getHolder();
 		mHolder.addCallback(this);
 	}
 	
-	public void setResultPreview(ImageView imagePreview) {
-		mResultPreview = imagePreview;
-	}
-	
 	public Camera getCamera() {
 		return mCamera;
+	}
+	
+	public boolean isExposing() {
+		return mIsExposing;
 	}
 	
 	@Override
@@ -188,43 +189,46 @@ Runnable {
 	
 	/** Start or stop exposing */
 	public void onShutterClick() {
-		if(mIsShutterEnabled)
-			if(mIsExposing)
+		if(mIsExposing)
+		{
+			Log.i(TAG, "Stop exposing");
+			mIsExposing = false;
+			// Wait for exposing thread
+			mActivity.mButtonShutter.setVisibility(INVISIBLE);
+		}
+		else
+		{
+			Log.i(TAG, "Start exposing");
+			mPreviewRGBData = new int[mPictureWidth * mPictureHeight];
+			mPictureData    = new int[mPictureWidth * mPictureHeight * 3];
+			mFrameCount     = 0;
+			mIsExposing     = true;
+			// Start exposing thread
+	        (new Thread(this)).start();
+
+	        mActivity.mResultPreview.setVisibility(VISIBLE);
+	        mActivity.mButtonSetting.setVisibility(INVISIBLE);
+			
+			// Resize
+			FrameLayout.LayoutParams lp = (FrameLayout.LayoutParams)getLayoutParams();
+			lp.leftMargin = 20;
+			lp.topMargin  = 20;
+			if(mPictureWidth > mPictureHeight)
 			{
-				Log.i(TAG, "Stop exposing");
-				mIsExposing       = false;
-				// Wait for exposing thread
-				mIsShutterEnabled = false;
+				lp.width  = 200;
+				lp.height = mPictureHeight * 200 / mPictureWidth;
 			}
 			else
 			{
-				Log.i(TAG, "Start exposing");
-				mPreviewRGBData = new int[mPictureWidth * mPictureHeight];
-				mPictureData    = new int[mPictureWidth * mPictureHeight * 3];
-				mFrameCount     = 0;
-				mIsExposing     = true;
-				// Start exposing thread
-		        (new Thread(this)).start();
-
-				// Resize
-				FrameLayout.LayoutParams lp = (FrameLayout.LayoutParams)getLayoutParams();
-				lp.leftMargin = 20;
-				lp.topMargin  = 20;
-				if(mPictureWidth > mPictureHeight)
-				{
-					lp.width  = 200;
-					lp.height = mPictureHeight * 200 / mPictureWidth;
-				}
-				else
-				{
-					lp.width  = mPictureWidth * 200 / mPictureHeight;
-					lp.height = 200;
-				}
-				setLayoutParams(lp);
+				lp.width  = mPictureWidth * 200 / mPictureHeight;
+				lp.height = 200;
 			}
+			setLayoutParams(lp);
+		}
 	}
 	
 	/** Exposing thread */
+	@SuppressLint("SimpleDateFormat")
 	@Override
 	public void run() {
 		while(mIsExposing)
@@ -245,63 +249,92 @@ Runnable {
 			
 			// Blend pictures and show
 			mResultBitmap = mPictureBlender[mPictureBlenderIndex].blend();
-			mUpdateResultPreview.sendEmptyMessage(0);
+			mHandler.sendEmptyMessage(MSG_UPDATA_RESULT_PREVIEW);
 		}
-		mExposingFinish.sendEmptyMessage(0);
+		// Exposing finish
+		mHandler.sendEmptyMessage(MSG_EXPOSING_FINISH);
+
+		// Save the picture
+		// Temporary path
+		final String storagePath = Environment.getExternalStorageDirectory().getPath() + "/FakeLongExposureCamera";
+		try {
+        	Bundle bundle = new Bundle();
+        	Message msg = new Message();
+        	msg.what = MSG_TOAST;
+        	
+        	// Create file
+            File dir = new File(storagePath);
+            if(!dir.exists())
+                if(!dir.mkdirs()) {
+                    bundle.putString("msg", getResources().getString(R.string.failed_to_create_directory));
+                	msg.setData(bundle);
+                	mHandler.sendMessage(msg);
+                    return;
+                }
+            File file = new File(storagePath + "/" + new SimpleDateFormat("yyyyMMdd_HHmmss").format(new Date()) + ".jpg");
+            
+            // Write file
+            BufferedOutputStream bos = new BufferedOutputStream(new FileOutputStream(file));
+
+            if(mResultBitmap.compress(Bitmap.CompressFormat.JPEG, 100, bos))
+            {
+	            bos.flush();
+	            bundle.putString("msg", getResources().getString(R.string.saved_to) + " " + file.getPath());
+            }
+            else
+            	bundle.putString("msg", getResources().getString(R.string.failed_to_write_file) + file.getPath());
+        	msg.setData(bundle);
+        	mHandler.sendMessage(msg);
+        	
+            bos.close();
+        } catch(Exception e) {
+            e.printStackTrace();
+        }
 	}
 	
-	@SuppressLint("HandlerLeak")
-	protected Handler mUpdateResultPreview = new Handler() {
-		@Override
-        public void handleMessage(Message msg) {
-			mResultPreview.setImageBitmap(mResultBitmap);
-		}
-	};
-	
+	protected static final int MSG_UPDATA_RESULT_PREVIEW = 1;
+	protected static final int MSG_EXPOSING_FINISH = 2;
+	protected static final int MSG_RESTORE = 3;
+	protected static final int MSG_TOAST = 4;
 	
 	/** Save the picture, resize this view */
 	@SuppressLint("HandlerLeak")
-	protected Handler mExposingFinish = new Handler() {
-		@SuppressLint("SimpleDateFormat")
+	protected Handler mHandler = new Handler() {
 		@Override
         public void handleMessage(Message msg) {
-			// Save the picture
-			// Temporary path
-			final String storagePath = Environment.getExternalStorageDirectory().getPath() + "/FakeLongExposureCamera";
-			try {
-	            File dir = new File(storagePath);
-	            if(!dir.exists())
-	                if(!dir.mkdirs()) {
-	                    Toast.makeText(getContext(), getResources().getString(R.string.failed_to_create_directory), 
-	                    		Toast.LENGTH_SHORT).show();
-	                    return;
-	                }
-	            File file = new File(storagePath + "/" + new SimpleDateFormat("yyyyMMdd_HHmmss").format(new Date()) + ".jpg");
-	            
-	            BufferedOutputStream bos = new BufferedOutputStream(new FileOutputStream(file));
-	            if(mResultBitmap.compress(Bitmap.CompressFormat.JPEG, 100, bos))
-	            {
-		            bos.flush();
-		            Toast.makeText(getContext(), getResources().getString(R.string.saved_to) + " " + file.getPath(), 
-		            		Toast.LENGTH_SHORT).show();
-	            }
-	            else
-	            	Toast.makeText(getContext(), getResources().getString(R.string.failed_to_write_file) + file.getPath(), 
-		            		Toast.LENGTH_SHORT).show();
-	            bos.close();
-	        } catch(Exception e) {
-	            e.printStackTrace();
-	        }
-			
-			// Resize
-			FrameLayout.LayoutParams lp = (FrameLayout.LayoutParams)getLayoutParams();
-			lp.leftMargin = 0;
-			lp.topMargin  = 0;
-			lp.width      = FrameLayout.LayoutParams.MATCH_PARENT;
-			lp.height     = FrameLayout.LayoutParams.MATCH_PARENT;
-			setLayoutParams(lp);
-			
-			mIsShutterEnabled = true;
+			switch(msg.what)
+			{
+			case MSG_UPDATA_RESULT_PREVIEW:
+				mActivity.mResultPreview.setImageBitmap(mResultBitmap);
+				break;
+				
+			case MSG_EXPOSING_FINISH:
+				// Preview
+				CameraPreview.this.setVisibility(INVISIBLE);
+				
+				// Resize
+				FrameLayout.LayoutParams lp = (FrameLayout.LayoutParams)getLayoutParams();
+				lp.leftMargin = 0;
+				lp.topMargin  = 0;
+				lp.width      = FrameLayout.LayoutParams.MATCH_PARENT;
+				lp.height     = FrameLayout.LayoutParams.MATCH_PARENT;
+				setLayoutParams(lp);
+
+				sendEmptyMessageDelayed(MSG_RESTORE, 2000);
+				break;
+				
+			case MSG_RESTORE:
+				CameraPreview.this.setVisibility(VISIBLE);
+				mActivity.mResultPreview.setVisibility(INVISIBLE);
+		        mActivity.mButtonSetting.setVisibility(VISIBLE);
+				mActivity.mButtonShutter.setVisibility(VISIBLE);
+				break;
+				
+			case MSG_TOAST:
+				Toast.makeText(getContext(), msg.getData().getString("msg"), 
+	            		Toast.LENGTH_SHORT).show();
+				break;
+			}
 		}
 	};
 	

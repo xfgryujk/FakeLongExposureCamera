@@ -7,7 +7,8 @@
     <ImageView
         android:id="@+id/result_preview"
         android:layout_width="match_parent"
-        android:layout_height="match_parent" />
+        android:layout_height="match_parent"
+        android:visibility="invisible" />
 
     <com.xfgryujk.longexposurecamera.CameraPreview
         android:id="@+id/camera_preview"
