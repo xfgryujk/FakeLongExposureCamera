@@ -38,7 +38,7 @@ public class SettingsManager {
 	public static int mEV;
 	public static String mWhiteBalance;
 	public static int mResolution;
-	public static int mISO;
+	//public static int mISO;
 	
 	
 	/** Load settings */
@@ -53,7 +53,7 @@ public class SettingsManager {
         mEV             = pref.getInt(res.getString(R.string.pref_EV), 0);
         mWhiteBalance   = pref.getString(res.getString(R.string.pref_white_balance), "auto");
         mResolution     = pref.getInt(res.getString(R.string.pref_resolution), 0);
-        mISO            = pref.getInt(res.getString(R.string.pref_ISO), 0);
+        //mISO            = pref.getInt(res.getString(R.string.pref_ISO), 0);
 	}
 
 	/** Show settings dialog */
@@ -100,10 +100,10 @@ public class SettingsManager {
 			item.put("value", sizesString[mResolution]);
 			data.add(item);
 			
-			item = new HashMap<String, String>();
+			/*item = new HashMap<String, String>();
 			item.put("name", res.getString(R.string.ISO));
 			item.put("value", "");
-			data.add(item);
+			data.add(item);*/
 			
 			SimpleAdapter adapter = new SimpleAdapter(mMainActivity, 
 					data, R.layout.settings_list, 
@@ -114,16 +114,18 @@ public class SettingsManager {
 			
 			// Set dialog
 			Dialog dialog = builder.setView(view).create();
+	        dialog.setCanceledOnTouchOutside(true);
+	        
 			Window dialogWindow = dialog.getWindow();
+	        dialogWindow.clearFlags(WindowManager.LayoutParams.FLAG_DIM_BEHIND);
 	        WindowManager.LayoutParams lp = dialogWindow.getAttributes();
 	        dialogWindow.setGravity(Gravity.LEFT | Gravity.TOP);
-	        lp.x      = 30;
-	        lp.y      = 20;
-	        lp.width  = 100;
-	        lp.height = 300;
-	        lp.alpha  = 0.3f;
+	        lp.x     = 30;
+	        lp.y     = 20;
+	        lp.alpha = 0.3f;
 	        dialogWindow.setAttributes(lp);
 	        dialog.show();
+	        dialogWindow.setLayout(450, WindowManager.LayoutParams.WRAP_CONTENT);
 	        
 	        
 			// test ISO
@@ -266,8 +268,8 @@ public class SettingsManager {
 				.show();
 				break;
 				
-			case 5: // ISO
-				break;
+			/*case 5: // ISO
+				break;*/
 			}
 		}
 	};

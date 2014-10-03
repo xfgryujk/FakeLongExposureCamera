@@ -22,7 +22,7 @@
     
     <string name="resolution">Resolution</string>
     
-    <string name="ISO">ISO</string>
+    <!-- <string name="ISO">ISO</string> -->
     
     <string name="error">Error</string>
     <string name="ok">OK</string>

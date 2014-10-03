@@ -20,6 +20,7 @@ import android.os.Bundle;
 import android.os.Handler;
 import android.os.Message;
 import android.util.AttributeSet;
+import android.util.DisplayMetrics;
 import android.util.Log;
 import android.view.SurfaceHolder;
 import android.view.SurfaceView;
@@ -90,6 +91,18 @@ Runnable {
 		Log.i(TAG, "surfaceDestroyed()");
 		releaseCamera();
 	}
+	
+	private void resize(int centreX, int centreY, int maxWidth, int maxHeight) {
+		FrameLayout.LayoutParams lp = (FrameLayout.LayoutParams)getLayoutParams();
+		float scale1  = (float)maxWidth / (float)mPictureWidth;
+		float scale2  = (float)maxHeight / (float)mPictureHeight;
+		float scale   = scale1 < scale2 ? scale1 : scale2;
+		lp.width      = (int)(mPictureWidth * scale);
+		lp.height     = (int)(mPictureHeight * scale);
+		lp.leftMargin = centreX - lp.width / 2;
+		lp.topMargin  = centreY - lp.height / 2;
+		setLayoutParams(lp);
+	}
 
 	/** Open camera, set parameters */
 	public void resetCamera() {
@@ -134,6 +147,11 @@ Runnable {
 		Log.i(TAG, "preview size " + mPictureWidth + " * " + mPictureHeight);
 
 		mCamera.setParameters(params);
+		
+		// Resize
+		DisplayMetrics dm = new DisplayMetrics();
+		mActivity.getWindowManager().getDefaultDisplay().getMetrics(dm);
+		resize(dm.widthPixels / 2, dm.heightPixels / 2, dm.widthPixels, dm.heightPixels);
 		
 		// Set preview display
 		try {
@@ -203,21 +221,7 @@ Runnable {
 	        mActivity.mResultPreview.setVisibility(VISIBLE);
 	        mActivity.mButtonSetting.setVisibility(INVISIBLE);
 			
-			// Resize
-			FrameLayout.LayoutParams lp = (FrameLayout.LayoutParams)getLayoutParams();
-			lp.leftMargin = 20;
-			lp.topMargin  = 20;
-			if(mPictureWidth > mPictureHeight)
-			{
-				lp.width  = 200;
-				lp.height = mPictureHeight * 200 / mPictureWidth;
-			}
-			else
-			{
-				lp.width  = mPictureWidth * 200 / mPictureHeight;
-				lp.height = 200;
-			}
-			setLayoutParams(lp);
+			resize(120, 120, 200, 200);
 		}
 	}
 	
@@ -276,7 +280,7 @@ Runnable {
             else
             	bundle.putString("msg", getResources().getString(R.string.failed_to_write_file) + file.getPath());
         	msg.setData(bundle);
-        	mHandler.sendMessage(msg);
+        	mHandler.sendMessageDelayed(msg, 2000);
         	
             bos.close();
         } catch(Exception e) {
@@ -304,12 +308,9 @@ Runnable {
 				CameraPreview.this.setVisibility(INVISIBLE);
 				
 				// Resize
-				FrameLayout.LayoutParams lp = (FrameLayout.LayoutParams)getLayoutParams();
-				lp.leftMargin = 0;
-				lp.topMargin  = 0;
-				lp.width      = FrameLayout.LayoutParams.MATCH_PARENT;
-				lp.height     = FrameLayout.LayoutParams.MATCH_PARENT;
-				setLayoutParams(lp);
+				DisplayMetrics dm = new DisplayMetrics();
+				mActivity.getWindowManager().getDefaultDisplay().getMetrics(dm);
+				resize(dm.widthPixels / 2, dm.heightPixels / 2, dm.widthPixels, dm.heightPixels);
 
 				sendEmptyMessageDelayed(MSG_RESTORE, 2000);
 				break;
