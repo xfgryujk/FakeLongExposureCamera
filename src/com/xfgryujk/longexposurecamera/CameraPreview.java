@@ -141,17 +141,26 @@ Runnable {
 		mPictureWidth  = sizes.get(SettingsManager.mResolution).width;
 		mPictureHeight = sizes.get(SettingsManager.mResolution).height;
 		params.setPreviewSize(mPictureWidth, mPictureHeight);
+		params.set("iso", SettingsManager.mISO);
+		params.set("iso-speed", SettingsManager.mISO);
+		params.set("nv-picture-iso", SettingsManager.mISO);
 		
 		Log.i(TAG, "EV " + SettingsManager.mEV);
 		Log.i(TAG, "white balance " + SettingsManager.mWhiteBalance);
 		Log.i(TAG, "preview size " + mPictureWidth + " * " + mPictureHeight);
+		Log.i(TAG, "ISO " + SettingsManager.mISO);
 
 		mCamera.setParameters(params);
 		
 		// Resize
-		DisplayMetrics dm = new DisplayMetrics();
-		mActivity.getWindowManager().getDefaultDisplay().getMetrics(dm);
-		resize(dm.widthPixels / 2, dm.heightPixels / 2, dm.widthPixels, dm.heightPixels);
+		if(mIsExposing)
+			resize(120, 120, 200, 200);
+		else
+		{
+			DisplayMetrics dm = new DisplayMetrics();
+			mActivity.getWindowManager().getDefaultDisplay().getMetrics(dm);
+			resize(dm.widthPixels / 2, dm.heightPixels / 2, dm.widthPixels, dm.heightPixels);
+		}
 		
 		// Set preview display
 		try {
@@ -217,8 +226,12 @@ Runnable {
 			mIsExposing     = true;
 			// Start exposing thread
 	        (new Thread(this)).start();
-
+			
+			mLastFPSTime    = System.currentTimeMillis();
+			mLastFrameCount = 0;
+			
 	        mActivity.mResultPreview.setVisibility(VISIBLE);
+	        mActivity.mOutputText.setVisibility(VISIBLE);
 	        mActivity.mButtonSetting.setVisibility(INVISIBLE);
 			
 			resize(120, 120, 200, 200);
@@ -292,6 +305,9 @@ Runnable {
 	protected static final int MSG_EXPOSING_FINISH = 2;
 	protected static final int MSG_RESTORE = 3;
 	protected static final int MSG_TOAST = 4;
+	private long mLastFPSTime;
+	private int mLastFrameCount;
+	private String mFPSString = "";
 	/** Save the picture, resize this view */
 	@SuppressLint("HandlerLeak")
 	protected Handler mHandler = new Handler() {
@@ -301,11 +317,22 @@ Runnable {
 			{
 			case MSG_UPDATA_RESULT_PREVIEW:
 				mActivity.mResultPreview.setImageBitmap(mResultBitmap);
+				long time = System.currentTimeMillis();
+				if(time - mLastFPSTime >= 1000) {
+					mFPSString = String.format("  %.2fFPS", 
+							(float)(mFrameCount - mLastFrameCount) / (float)(time - mLastFPSTime) * 1000);
+					mLastFPSTime    = time;
+					mLastFrameCount = mFrameCount;
+				}
+				mActivity.mOutputText.setText(Integer.toString(mFrameCount) + mFPSString);
 				break;
 				
 			case MSG_EXPOSING_FINISH:
 				// Preview
 				CameraPreview.this.setVisibility(INVISIBLE);
+		        mActivity.mOutputText.setVisibility(INVISIBLE);
+		        mFPSString = "";
+		        mActivity.mOutputText.setText("");
 				
 				// Resize
 				DisplayMetrics dm = new DisplayMetrics();
@@ -399,15 +426,17 @@ Runnable {
 			public Bitmap blend() {
 			    for(int i = 0; i < mPreviewRGBData.length; i++)
 			    {
-			        int sum1 = mPictureData[i * 3] + mPictureData[i * 3 + 1] + mPictureData[i * 3 + 2];
-			        int r = (mPreviewRGBData[i] & 0x00FF0000) >> 16;
-			        int g = (mPreviewRGBData[i] & 0x0000FF00) >> 8;
-					int b = mPreviewRGBData[i] & 0x000000FF;
-			        if(r + g + b > sum1)
+			        int r1 = mPictureData[i * 3];
+			        int g1 = mPictureData[i * 3 + 1];
+			        int b1 = mPictureData[i * 3 + 2];
+			        int r2 = (mPreviewRGBData[i] & 0x00FF0000) >> 16;
+			        int g2 = (mPreviewRGBData[i] & 0x0000FF00) >> 8;
+					int b2 = mPreviewRGBData[i] & 0x000000FF;
+			        if(r2 * r2 + g2 * g2 + b2 * b2 > r1 * r1 + g1 * g1 + b1 * b1)
 			        {
-			        	mPictureData[i * 3]     = r;
-			        	mPictureData[i * 3 + 1] = g;
-			        	mPictureData[i * 3 + 2] = b;
+			        	mPictureData[i * 3]     = r2;
+			        	mPictureData[i * 3 + 1] = g2;
+			        	mPictureData[i * 3 + 2] = b2;
 			        }
 			    }
 

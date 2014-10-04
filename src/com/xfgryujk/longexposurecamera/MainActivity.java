@@ -10,6 +10,7 @@ import android.view.Window;
 import android.view.WindowManager;
 import android.widget.Button;
 import android.widget.ImageView;
+import android.widget.TextView;
 import android.widget.Toast;
 
 public class MainActivity extends Activity {
@@ -18,6 +19,7 @@ public class MainActivity extends Activity {
 	
 	public CameraPreview mCameraPreview;
 	public ImageView mResultPreview;
+	public TextView mOutputText;
 	public Button mButtonShutter;
 	public Button mButtonSetting;
 	
@@ -38,6 +40,7 @@ public class MainActivity extends Activity {
 		setContentView(R.layout.activity_main);
 		mCameraPreview = (CameraPreview)findViewById(R.id.camera_preview);
 		mResultPreview = (ImageView)findViewById(R.id.result_preview);
+		mOutputText    = (TextView)findViewById(R.id.output_text);
 		mButtonShutter = (Button)findViewById(R.id.shutter_button);
 		mButtonSetting = (Button)findViewById(R.id.setting_button);
 		
@@ -58,16 +61,18 @@ public class MainActivity extends Activity {
 	@Override
 	public boolean onKeyDown(int keyCode, KeyEvent event) {
 	    if(keyCode == KeyEvent.KEYCODE_BACK && event.getAction() == KeyEvent.ACTION_DOWN)
-	    {   
-	        if(System.currentTimeMillis() - mLastBackTime > 2000)
-	        {  
+	    {
+	    	if(mCameraPreview.isExposing())
+	    		mCameraPreview.onShutterClick();
+	    	else if(System.currentTimeMillis() - mLastBackTime >= 2000)
+	        {
 	            Toast.makeText(this, getResources().getString(R.string.click_again_to_exit), 
-	            		Toast.LENGTH_SHORT).show();                                
-	            mLastBackTime = System.currentTimeMillis();   
+	            		Toast.LENGTH_SHORT).show();
+	            mLastBackTime = System.currentTimeMillis();
 	        }
 	        else
 	            finish();
-	        return true;   
+	        return true;
 	    }
 	    return super.onKeyDown(keyCode, event);
 	}

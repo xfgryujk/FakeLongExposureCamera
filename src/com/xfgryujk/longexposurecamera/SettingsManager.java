@@ -38,7 +38,7 @@ public class SettingsManager {
 	public static int mEV;
 	public static String mWhiteBalance;
 	public static int mResolution;
-	//public static int mISO;
+	public static String mISO;
 	
 	
 	/** Load settings */
@@ -53,7 +53,7 @@ public class SettingsManager {
         mEV             = pref.getInt(res.getString(R.string.pref_EV), 0);
         mWhiteBalance   = pref.getString(res.getString(R.string.pref_white_balance), "auto");
         mResolution     = pref.getInt(res.getString(R.string.pref_resolution), 0);
-        //mISO            = pref.getInt(res.getString(R.string.pref_ISO), 0);
+        mISO            = pref.getString(res.getString(R.string.pref_ISO), "auto");
 	}
 
 	/** Show settings dialog */
@@ -100,10 +100,10 @@ public class SettingsManager {
 			item.put("value", sizesString[mResolution]);
 			data.add(item);
 			
-			/*item = new HashMap<String, String>();
+			item = new HashMap<String, String>();
 			item.put("name", res.getString(R.string.ISO));
-			item.put("value", "");
-			data.add(item);*/
+			item.put("value", mISO);
+			data.add(item);
 			
 			SimpleAdapter adapter = new SimpleAdapter(mMainActivity, 
 					data, R.layout.settings_list, 
@@ -126,47 +126,6 @@ public class SettingsManager {
 	        dialogWindow.setAttributes(lp);
 	        dialog.show();
 	        dialogWindow.setLayout(450, WindowManager.LayoutParams.WRAP_CONTENT);
-	        
-	        
-			// test ISO
-			/*String flat = params.flatten();
-			Log.i(TAG, flat);
-			String[] isoValues	= null;
-			String values_keyword = null;
-			String iso_keyword	= null;
-			if(flat.contains("iso-values")) {
-				// most used keywords
-				values_keyword = "iso-values";
-				iso_keyword	= "iso";
-			} else if(flat.contains("iso-mode-values")) {
-				// google galaxy nexus keywords
-				values_keyword = "iso-mode-values";
-				iso_keyword	= "iso";
-			} else if(flat.contains("iso-speed-values")) {
-				// micromax a101 keywords
-				values_keyword = "iso-speed-values";
-				iso_keyword	= "iso-speed";
-			} else if(flat.contains("nv-picture-iso-values")) {
-				// LG dual p990 keywords
-				values_keyword = "nv-picture-iso-values";
-				iso_keyword	= "nv-picture-iso";
-			}
-			// add other eventual keywords here...
-			if(iso_keyword != null) {
-				// flatten contains the iso key!!
-				String iso = flat.substring(flat.indexOf(values_keyword));
-				iso = iso.substring(iso.indexOf("=") + 1);
-				if(iso.contains(";"))
-					iso = iso.substring(0, iso.indexOf(";"));
-
-				isoValues = iso.split(",");
-				
-				for(String str : isoValues)
-					Log.i(TAG, str);
-			} else {
-				// iso not supported in a known way
-				Log.i(TAG, "ISO is not supported");
-			}*/
 		}
 	};
 	
@@ -268,8 +227,65 @@ public class SettingsManager {
 				.show();
 				break;
 				
-			/*case 5: // ISO
-				break;*/
+			case 5: // ISO ***** Not every device support!
+				// Test
+				/*String flat = params.flatten();
+				Log.i(TAG, flat);
+				String[] isoValues	= null;
+				String values_keyword = null;
+				String iso_keyword	= null;
+				if(flat.contains("iso-values")) {
+					// most used keywords
+					values_keyword = "iso-values";
+					iso_keyword	= "iso";
+				} else if(flat.contains("iso-mode-values")) {
+					// google galaxy nexus keywords
+					values_keyword = "iso-mode-values";
+					iso_keyword	= "iso";
+				} else if(flat.contains("iso-speed-values")) {
+					// micromax a101 keywords
+					values_keyword = "iso-speed-values";
+					iso_keyword	= "iso-speed";
+				} else if(flat.contains("nv-picture-iso-values")) {
+					// LG dual p990 keywords
+					values_keyword = "nv-picture-iso-values";
+					iso_keyword	= "nv-picture-iso";
+				}
+				// add other eventual keywords here...
+				if(iso_keyword != null) {
+					// flatten contains the iso key!!
+					String iso = flat.substring(flat.indexOf(values_keyword));
+					iso = iso.substring(iso.indexOf("=") + 1);
+					if(iso.contains(";"))
+						iso = iso.substring(0, iso.indexOf(";"));
+
+					isoValues = iso.split(",");
+					
+					for(String str : isoValues)
+						Log.i(TAG, str);
+				} else {
+					// iso not supported in a known way
+					Log.i(TAG, "ISO is not supported");
+				}*/
+				
+				final String[] ISOs = {"auto", "50", "100", "200", "400", "800"
+						, "1600", "3200", "sports", "night", "movie"};
+				builder.setTitle(res.getString(R.string.ISO))
+				.setItems(ISOs, new DialogInterface.OnClickListener() {
+					@Override
+					public void onClick(DialogInterface dialog, int which) {
+						mISO = ISOs[which];
+						pref.edit().putString(res.getString(R.string.pref_ISO), mISO).commit();
+						((TextView)view.findViewById(R.id.setting_value)).setText(mISO);
+						params.set("iso", mISO);
+						params.set("iso-speed", mISO);
+						params.set("nv-picture-iso", mISO);
+						camera.setParameters(params);
+					}
+				})
+				.create()
+				.show();
+				break;
 			}
 		}
 	};
