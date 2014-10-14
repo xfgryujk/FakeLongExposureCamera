@@ -171,7 +171,31 @@ extern "C" {
  * Signature: ([I[BII)V
  */
 JNIEXPORT void JNICALL Java_com_xfgryujk_longexposurecamera_CameraPreview_decodeYUV420SP
-  (JNIEnv *, jobject, jintArray, jbyteArray, jint, jint);
+  (JNIEnv *, jclass, jintArray, jbyteArray, jint, jint);
+
+/*
+ * Class:     com_xfgryujk_longexposurecamera_CameraPreview
+ * Method:    blendAverage
+ * Signature: (II[I[II)[I
+ */
+JNIEXPORT jintArray JNICALL Java_com_xfgryujk_longexposurecamera_CameraPreview_blendAverage
+  (JNIEnv *, jclass, jint, jint, jintArray, jintArray, jint);
+
+/*
+ * Class:     com_xfgryujk_longexposurecamera_CameraPreview
+ * Method:    blendMax
+ * Signature: (II[I[II)[I
+ */
+JNIEXPORT jintArray JNICALL Java_com_xfgryujk_longexposurecamera_CameraPreview_blendMax
+  (JNIEnv *, jclass, jint, jint, jintArray, jintArray, jint);
+
+/*
+ * Class:     com_xfgryujk_longexposurecamera_CameraPreview
+ * Method:    blendScreen
+ * Signature: (II[I[II)[I
+ */
+JNIEXPORT jintArray JNICALL Java_com_xfgryujk_longexposurecamera_CameraPreview_blendScreen
+  (JNIEnv *, jclass, jint, jint, jintArray, jintArray, jint);
 
 #ifdef __cplusplus
 }

@@ -68,10 +68,10 @@
     </PreBuildEvent>
   </ItemDefinitionGroup>
   <ItemGroup>
-    <ClInclude Include="..\com_xfgryujk_longexposurecamera_CameraPreview.h" />
+    <ClCompile Include="..\com_xfgryujk_longexposurecamera_CameraPreview.c" />
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="..\com_xfgryujk_longexposurecamera_CameraPreview.c" />
+    <ClInclude Include="..\com_xfgryujk_longexposurecamera_CameraPreview.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

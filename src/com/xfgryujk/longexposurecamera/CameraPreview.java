@@ -39,11 +39,6 @@ public class CameraPreview extends SurfaceView implements SurfaceHolder.Callback
 	
 	protected volatile boolean mIsExposing = false;
 	
-	static
-	{
-		System.loadLibrary("ImageJni");
-	}
-	
 	/** YUV */
 	protected byte[] mPreviewData;
 	/** R1 G1 B1 R2 G2 B2 ... */
@@ -404,38 +399,6 @@ public class CameraPreview extends SurfaceView implements SurfaceHolder.Callback
 		}
 	};
 	
-	/*private void decodeYUV420SP(int[] rgb, byte[] yuv420sp, int width, int height) {
-		final int frameSize = width * height;
-
-		for (int j = 0, yp = 0; j < height; j++)
-		{
-			int uvp = frameSize + (j >> 1) * width, u = 0, v = 0;
-			for (int i = 0; i < width; i++, yp++)
-			{
-				int y = (0xff & ((int) yuv420sp[yp])) - 16;
-				if (y < 0) y = 0;
-				if ((i & 1) == 0)
-				{
-					v = (0xff & yuv420sp[uvp++]) - 128;
-					u = (0xff & yuv420sp[uvp++]) - 128;
-				}
-
-				int y1192 = 1192 * y;
-				int r = (y1192 + 1634 * v);
-				int g = (y1192 - 833 * v - 400 * u);
-				int b = (y1192 + 2066 * u);
-
-				if (r < 0) r = 0; else if (r > 262143) r = 262143;
-				if (g < 0) g = 0; else if (g > 262143) g = 262143;
-				if (b < 0) b = 0; else if (b > 262143) b = 262143;
-
-				rgb[yp] = 0xff000000 | ((r << 6) & 0xff0000) | ((g >> 2) & 0xff00) | ((b >> 10) & 0xff);
-		 	}
-		}
-	}*/
-	
-	private native void decodeYUV420SP(int[] rgb, byte[] yuv420sp, int width, int height);
-	
 	protected interface PictureBlender {
 		/** Called by exposing thread */
 		public int[] blend(int[] previewRGBData, int frameCount);
@@ -445,20 +408,7 @@ public class CameraPreview extends SurfaceView implements SurfaceHolder.Callback
 		new PictureBlender() {
 			@Override
 			public int[] blend(int[] previewRGBData, int frameCount) {
-				/** RGB1 RGB2 ... */
-				int[] data = new int[mPictureWidth * mPictureHeight];
-				for(int i = 0; i < previewRGBData.length; i++)
-			    {
-					mPictureData[i * 3]     += (previewRGBData[i] & 0x00FF0000) >> 16;
-			        mPictureData[i * 3 + 1] += (previewRGBData[i] & 0x0000FF00) >> 8;
-			        mPictureData[i * 3 + 2] += (previewRGBData[i] & 0x000000FF);
-			        
-					data[i] = 0xFF000000;
-					data[i] |= (mPictureData[i * 3]     / frameCount) << 16;
-					data[i] |= (mPictureData[i * 3 + 1] / frameCount) << 8;
-					data[i] |=  mPictureData[i * 3 + 2] / frameCount;
-			    }
-				return data;
+				return blendAverage(mPictureWidth, mPictureHeight, mPictureData, previewRGBData, frameCount);
 			}
 		},
 
@@ -466,28 +416,7 @@ public class CameraPreview extends SurfaceView implements SurfaceHolder.Callback
 		new PictureBlender() {
 			@Override
 			public int[] blend(int[] previewRGBData, int frameCount) {
-				/** RGB1 RGB2 ... */
-				int[] data = new int[mPictureWidth * mPictureHeight];
-			    for(int i = 0; i < previewRGBData.length; i++)
-			    {
-			    	int r1 = mPictureData[i * 3];
-			        int g1 = mPictureData[i * 3 + 1];
-			        int b1 = mPictureData[i * 3 + 2];
-			        int r2 = (previewRGBData[i] & 0x00FF0000) >> 16;
-			        int g2 = (previewRGBData[i] & 0x0000FF00) >> 8;
-					int b2 = previewRGBData[i] & 0x000000FF;
-			        if(r2 * r2 + g2 * g2 + b2 * b2 > r1 * r1 + g1 * g1 + b1 * b1)
-			        {
-			        	mPictureData[i * 3]     = r2;
-			        	mPictureData[i * 3 + 1] = g2;
-				        mPictureData[i * 3 + 2] = b2;
-			        }
-					data[i] = 0xFF000000;
-					data[i] |= mPictureData[i * 3]     << 16;
-					data[i] |= mPictureData[i * 3 + 1] << 8;
-					data[i] |= mPictureData[i * 3 + 2];
-			    }
-				return data;
+				return blendMax(mPictureWidth, mPictureHeight, mPictureData, previewRGBData, frameCount);
 			}
 		},
 
@@ -495,24 +424,18 @@ public class CameraPreview extends SurfaceView implements SurfaceHolder.Callback
 		new PictureBlender() {
 			@Override
 			public int[] blend(int[] previewRGBData, int frameCount) {
-				/** RGB1 RGB2 ... */
-				int[] data = new int[mPictureWidth * mPictureHeight];
-			    for(int i = 0; i < previewRGBData.length; i++)
-			    {
-			    	mPictureData[i * 3]     = 255 - (255 - mPictureData[i * 3]) 
-			        		* (255 - ((previewRGBData[i] & 0x00FF0000) >> 16)) / 255;
-			        mPictureData[i * 3 + 1] = 255 - (255 - mPictureData[i * 3 + 1]) 
-			        		* (255 - ((previewRGBData[i] & 0x0000FF00) >> 8)) / 255;
-			        mPictureData[i * 3 + 2] = 255 - (255 - mPictureData[i * 3 + 2]) 
-			        		* (255 - (previewRGBData[i] & 0x000000FF)) / 255;
-			        
-					data[i] = 0xFF000000;
-					data[i] |= mPictureData[i * 3]     << 16;
-					data[i] |= mPictureData[i * 3 + 1] << 8;
-					data[i] |= mPictureData[i * 3 + 2];
-			    }
-				return data;
+				return blendScreen(mPictureWidth, mPictureHeight, mPictureData, previewRGBData, frameCount);
 			}
 		}
 	};
+
+	
+	static {
+		System.loadLibrary("ImageJni");
+	}
+	
+	protected static final native void decodeYUV420SP(int[] rgb, final byte[] yuv420sp, int width, int height);
+	protected static final native int[] blendAverage(int width, int height, int[] mPictureData, final int[] previewRGBData, int frameCount);
+	protected static final native int[] blendMax(int width, int height, int[] mPictureData, final int[] previewRGBData, int frameCount);
+	protected static final native int[] blendScreen(int width, int height, int[] mPictureData, final int[] previewRGBData, int frameCount);
 }
