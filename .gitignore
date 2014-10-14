@@ -1,3 +1,14 @@
+# Visual Studio
+*.sdf
+*.opensdf
+*.suo
+jni/ipch/
+jni/Release/
+jni/jni/Release
+
+# NDK
+obj/
+
 # Built application files
 *.apk
 *.ap_

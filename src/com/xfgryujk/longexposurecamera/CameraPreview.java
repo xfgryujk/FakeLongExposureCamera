@@ -29,8 +29,7 @@ import android.view.View.OnClickListener;
 import android.widget.FrameLayout;
 import android.widget.Toast;
 
-public class CameraPreview extends SurfaceView implements SurfaceHolder.Callback, OnClickListener, 
-Runnable {
+public class CameraPreview extends SurfaceView implements SurfaceHolder.Callback, OnClickListener {
 	private static final String TAG = "CameraPreview";
 	
 	protected SurfaceHolder mHolder;
@@ -38,12 +37,15 @@ Runnable {
 	protected Camera mCamera;
 	protected int mPictureWidth, mPictureHeight;
 	
-	protected boolean mIsExposing = false;
+	protected volatile boolean mIsExposing = false;
+	
+	static
+	{
+		System.loadLibrary("ImageJni");
+	}
 	
 	/** YUV */
 	protected byte[] mPreviewData;
-	/** RGB1 RGB2 ... */
-	protected int[] mPreviewRGBData;
 	/** R1 G1 B1 R2 G2 B2 ... */
 	protected int[] mPictureData;
 	protected int mFrameCount;
@@ -210,121 +212,161 @@ Runnable {
 		{
 			Log.i(TAG, "Stop exposing");
 			mIsExposing = false;
-			// Wait for exposing thread
+			// Wait for exposing threads
 			mActivity.mButtonShutter.setVisibility(INVISIBLE);
     		synchronized (this)
     		{
-    			notify();
+    			notifyAll();
     		}
 		}
 		else
 		{
 			Log.i(TAG, "Start exposing");
-			mPreviewRGBData = new int[mPictureWidth * mPictureHeight];
 			mPictureData    = new int[mPictureWidth * mPictureHeight * 3];
+			mResultBitmap   = Bitmap.createBitmap(mPictureWidth, mPictureHeight, Config.RGB_565);
+			mActivity.mResultPreview.setImageBitmap(mResultBitmap);
 			mFrameCount     = 0;
-			mIsExposing     = true;
-			// Start exposing thread
-	        (new Thread(this)).start();
 			
 			mLastFPSTime    = System.currentTimeMillis();
 			mLastFrameCount = 0;
 			
+			// Start exposing threads
+			mIsExposing     = true;
+	        for(int i = 0; i < mMaxThreadCount; i++)
+		        (new Thread(new ExposingThread())).start();
+	        
 	        mActivity.mResultPreview.setVisibility(VISIBLE);
 	        mActivity.mOutputText.setVisibility(VISIBLE);
 	        mActivity.mButtonSetting.setVisibility(INVISIBLE);
-			
 			resize(120, 120, 200, 200);
 		}
 	}
 	
-	/** Exposing thread */
-	@SuppressLint("SimpleDateFormat")
-	@Override
-	public void run() {
-		while(mIsExposing)
-		{
-			synchronized (this) {
-	            try {
-	                this.wait();
-	            } catch(InterruptedException e) {
-	                e.printStackTrace();
-	            }
-	            
-	            // Get preview data in RGB
-	            decodeYUV420SP(mPreviewRGBData, mPreviewData, mPictureWidth, mPictureHeight);
-	        }
-	        mFrameCount++;
+	protected static final int mMaxThreadCount = Runtime.getRuntime().availableProcessors();
+	protected int mThreadCount = 0;
+	protected class ExposingThread implements Runnable {
+		@SuppressLint("SimpleDateFormat")
+		@Override
+		public void run() {
+			long id = Thread.currentThread().getId();
+			synchronized (CameraPreview.this) {
+				mThreadCount++;
+				Log.i(TAG, id + " starts, mThreadCount = " + mThreadCount);
+			}
+			/** YUV */
+			byte[] previewData;
+			/** RGB1 RGB2 ... */
+			int[] previewRGBData = new int[mPictureWidth * mPictureHeight];
+			int frameCount;
 			
-			// Blend pictures and show
-			mResultBitmap = mPictureBlender[SettingsManager.mBlendingMode].blend();
-			mHandler.sendEmptyMessage(MSG_UPDATA_RESULT_PREVIEW);
+			while(mIsExposing)
+			{
+		        // Get preview data in RGB
+				synchronized (CameraPreview.this) {
+					//Log.i(TAG, id + " is getting preview data");
+		            try {
+		            	CameraPreview.this.wait();
+		            } catch(InterruptedException e) {
+		                e.printStackTrace();
+		            }
+		            if(!mIsExposing && mFrameCount > 0)
+		            	break;
+		            
+		            frameCount = ++mFrameCount;
+		            previewData  = mPreviewData;
+		        }
+				//Log.i(TAG, id + " is decoding");
+		        decodeYUV420SP(previewRGBData, previewData, mPictureWidth, mPictureHeight);
+				
+				// Blend pictures and show
+				int[] data;
+				synchronized (mPictureData) {
+					//Log.i(TAG, id + " is blending, frameCount = " + frameCount);
+			        data = mPictureBlender[SettingsManager.mBlendingMode].blend(previewRGBData, frameCount);
+				}
+				synchronized (mResultBitmap) {
+					//Log.i(TAG, id + " is setting pixels");
+					mResultBitmap.setPixels(data, 0, mPictureWidth, 0, 0, mPictureWidth, mPictureHeight);
+					if(!mHandler.hasMessages(MSG_UPDATE_PREVIEW))
+						mHandler.sendEmptyMessage(MSG_UPDATE_PREVIEW);
+				}
+			}
+			synchronized (CameraPreview.this) {
+				Log.i(TAG, id + " is exiting, mThreadCount = " + mThreadCount);
+				if(--mThreadCount > 0) // Is not the last thread
+					return;
+			}
+			previewData    = null;
+			previewRGBData = null;
+			
+			// Exposing finish
+			mHandler.sendEmptyMessage(MSG_EXPOSING_FINISH);
+
+			// Save the picture
+			try {
+	        	Bundle bundle = new Bundle();
+	        	Message msg = new Message();
+	        	msg.what = MSG_TOAST;
+	        	
+	        	// Create file
+	            File dir = new File(SettingsManager.mPath);
+	            if(!dir.exists())
+	                if(!dir.mkdirs()) {
+	                    bundle.putString("msg", getResources().getString(R.string.failed_to_create_directory));
+	                	msg.setData(bundle);
+	                	mHandler.sendMessage(msg);
+	                    return;
+	                }
+	            File file = new File(SettingsManager.mPath + "/" + new SimpleDateFormat("yyyyMMdd_HHmmss").format(new Date()) + ".jpg");
+	            
+	            // Write file
+	            BufferedOutputStream bos = new BufferedOutputStream(new FileOutputStream(file));
+
+	            if(mResultBitmap.compress(Bitmap.CompressFormat.JPEG, 100, bos))
+	            {
+		            bos.flush();
+		            bundle.putString("msg", getResources().getString(R.string.saved_to) + " " + file.getPath());
+	            }
+	            else
+	            	bundle.putString("msg", getResources().getString(R.string.failed_to_write_file) + file.getPath());
+	        	msg.setData(bundle);
+	        	mHandler.sendMessageDelayed(msg, 2000);
+
+	            bos.close();
+	            
+	            // Restore
+	        	mHandler.sendEmptyMessageDelayed(MSG_RESTORE, 2000);
+	        } catch(Exception e) {
+	            e.printStackTrace();
+	        }
 		}
-		Log.i(TAG, "mFrameCount " + mFrameCount);
-		
-		// Exposing finish
-		mHandler.sendEmptyMessage(MSG_EXPOSING_FINISH);
-
-		// Save the picture
-		try {
-        	Bundle bundle = new Bundle();
-        	Message msg = new Message();
-        	msg.what = MSG_TOAST;
-        	
-        	// Create file
-            File dir = new File(SettingsManager.mPath);
-            if(!dir.exists())
-                if(!dir.mkdirs()) {
-                    bundle.putString("msg", getResources().getString(R.string.failed_to_create_directory));
-                	msg.setData(bundle);
-                	mHandler.sendMessage(msg);
-                    return;
-                }
-            File file = new File(SettingsManager.mPath + "/" + new SimpleDateFormat("yyyyMMdd_HHmmss").format(new Date()) + ".jpg");
-            
-            // Write file
-            BufferedOutputStream bos = new BufferedOutputStream(new FileOutputStream(file));
-
-            if(mResultBitmap.compress(Bitmap.CompressFormat.JPEG, 100, bos))
-            {
-	            bos.flush();
-	            bundle.putString("msg", getResources().getString(R.string.saved_to) + " " + file.getPath());
-            }
-            else
-            	bundle.putString("msg", getResources().getString(R.string.failed_to_write_file) + file.getPath());
-        	msg.setData(bundle);
-        	mHandler.sendMessageDelayed(msg, 2000);
-        	
-            bos.close();
-        } catch(Exception e) {
-            e.printStackTrace();
-        }
 	}
 	
-	protected static final int MSG_UPDATA_RESULT_PREVIEW = 1;
+	protected static final int MSG_UPDATE_PREVIEW = 1;
 	protected static final int MSG_EXPOSING_FINISH = 2;
 	protected static final int MSG_RESTORE = 3;
 	protected static final int MSG_TOAST = 4;
 	private long mLastFPSTime;
 	private int mLastFrameCount;
 	private String mFPSString = "";
-	/** Save the picture, resize this view */
 	@SuppressLint("HandlerLeak")
 	protected Handler mHandler = new Handler() {
 		@Override
         public void handleMessage(Message msg) {
 			switch(msg.what)
 			{
-			case MSG_UPDATA_RESULT_PREVIEW:
-				mActivity.mResultPreview.setImageBitmap(mResultBitmap);
+			case MSG_UPDATE_PREVIEW:
 				long time = System.currentTimeMillis();
-				if(time - mLastFPSTime >= 1000) {
+				if(time - mLastFPSTime >= 3000) {
 					mFPSString = String.format("  %.2fFPS", 
 							(float)(mFrameCount - mLastFrameCount) / (float)(time - mLastFPSTime) * 1000);
 					mLastFPSTime    = time;
 					mLastFrameCount = mFrameCount;
 				}
 				mActivity.mOutputText.setText(Integer.toString(mFrameCount) + mFPSString);
+				synchronized (mResultBitmap) {
+					mActivity.mResultPreview.invalidate();
+				}
 				break;
 				
 			case MSG_EXPOSING_FINISH:
@@ -338,8 +380,6 @@ Runnable {
 				DisplayMetrics dm = new DisplayMetrics();
 				mActivity.getWindowManager().getDefaultDisplay().getMetrics(dm);
 				resize(dm.widthPixels / 2, dm.heightPixels / 2, dm.widthPixels, dm.heightPixels);
-
-				sendEmptyMessageDelayed(MSG_RESTORE, 2000);
 				break;
 				
 			case MSG_RESTORE:
@@ -348,6 +388,12 @@ Runnable {
 				mActivity.mResultPreview.setImageBitmap(null);
 		        mActivity.mButtonSetting.setVisibility(VISIBLE);
 				mActivity.mButtonShutter.setVisibility(VISIBLE);
+				
+				// Release
+				mPreviewData     = null;
+				mPictureData     = null;
+				mResultBitmap.recycle();
+				mResultBitmap    = null;
 				break;
 				
 			case MSG_TOAST:
@@ -358,7 +404,7 @@ Runnable {
 		}
 	};
 	
-	private void decodeYUV420SP(int[] rgb, byte[] yuv420sp, int width, int height) {
+	/*private void decodeYUV420SP(int[] rgb, byte[] yuv420sp, int width, int height) {
 		final int frameSize = width * height;
 
 		for (int j = 0, yp = 0; j < height; j++)
@@ -386,101 +432,86 @@ Runnable {
 				rgb[yp] = 0xff000000 | ((r << 6) & 0xff0000) | ((g >> 2) & 0xff00) | ((b >> 10) & 0xff);
 		 	}
 		}
-	}
+	}*/
+	
+	private native void decodeYUV420SP(int[] rgb, byte[] yuv420sp, int width, int height);
 	
 	protected interface PictureBlender {
 		/** Called by exposing thread */
-		Bitmap blend();
+		public int[] blend(int[] previewRGBData, int frameCount);
 	}
-	
 	protected final PictureBlender[] mPictureBlender = {
 		// Average
 		new PictureBlender() {
 			@Override
-			public Bitmap blend() {
-				for(int i = 0; i < mPreviewRGBData.length; i++)
-			    {
-			        mPictureData[i * 3]     += (mPreviewRGBData[i] & 0x00FF0000) >> 16;
-			        mPictureData[i * 3 + 1] += (mPreviewRGBData[i] & 0x0000FF00) >> 8;
-			        mPictureData[i * 3 + 2] += (mPreviewRGBData[i] & 0x000000FF);
-			    }
-			    
+			public int[] blend(int[] previewRGBData, int frameCount) {
 				/** RGB1 RGB2 ... */
 				int[] data = new int[mPictureWidth * mPictureHeight];
-				for(int i = 0; i < data.length; i++)
-				{
+				for(int i = 0; i < previewRGBData.length; i++)
+			    {
+					mPictureData[i * 3]     += (previewRGBData[i] & 0x00FF0000) >> 16;
+			        mPictureData[i * 3 + 1] += (previewRGBData[i] & 0x0000FF00) >> 8;
+			        mPictureData[i * 3 + 2] += (previewRGBData[i] & 0x000000FF);
+			        
 					data[i] = 0xFF000000;
-					data[i] |= (mPictureData[i * 3]     / mFrameCount) << 16;
-					data[i] |= (mPictureData[i * 3 + 1] / mFrameCount) << 8;
-					data[i] |=  mPictureData[i * 3 + 2] / mFrameCount;
-				}
-				Bitmap bmp = Bitmap.createBitmap(mPictureWidth, mPictureHeight, Config.RGB_565);
-				bmp.setPixels(data, 0, mPictureWidth, 0, 0, mPictureWidth, mPictureHeight);
-				return bmp;
+					data[i] |= (mPictureData[i * 3]     / frameCount) << 16;
+					data[i] |= (mPictureData[i * 3 + 1] / frameCount) << 8;
+					data[i] |=  mPictureData[i * 3 + 2] / frameCount;
+			    }
+				return data;
 			}
 		},
 
 		// Max
 		new PictureBlender() {
 			@Override
-			public Bitmap blend() {
-			    for(int i = 0; i < mPreviewRGBData.length; i++)
+			public int[] blend(int[] previewRGBData, int frameCount) {
+				/** RGB1 RGB2 ... */
+				int[] data = new int[mPictureWidth * mPictureHeight];
+			    for(int i = 0; i < previewRGBData.length; i++)
 			    {
-			        int r1 = mPictureData[i * 3];
+			    	int r1 = mPictureData[i * 3];
 			        int g1 = mPictureData[i * 3 + 1];
 			        int b1 = mPictureData[i * 3 + 2];
-			        int r2 = (mPreviewRGBData[i] & 0x00FF0000) >> 16;
-			        int g2 = (mPreviewRGBData[i] & 0x0000FF00) >> 8;
-					int b2 = mPreviewRGBData[i] & 0x000000FF;
+			        int r2 = (previewRGBData[i] & 0x00FF0000) >> 16;
+			        int g2 = (previewRGBData[i] & 0x0000FF00) >> 8;
+					int b2 = previewRGBData[i] & 0x000000FF;
 			        if(r2 * r2 + g2 * g2 + b2 * b2 > r1 * r1 + g1 * g1 + b1 * b1)
 			        {
 			        	mPictureData[i * 3]     = r2;
 			        	mPictureData[i * 3 + 1] = g2;
-			        	mPictureData[i * 3 + 2] = b2;
+				        mPictureData[i * 3 + 2] = b2;
 			        }
-			    }
-
-				/** RGB1 RGB2 ... */
-				int[] data = new int[mPictureWidth * mPictureHeight];
-				for(int i = 0; i < data.length; i++)
-				{
 					data[i] = 0xFF000000;
 					data[i] |= mPictureData[i * 3]     << 16;
 					data[i] |= mPictureData[i * 3 + 1] << 8;
 					data[i] |= mPictureData[i * 3 + 2];
-				}
-				Bitmap bmp = Bitmap.createBitmap(mPictureWidth, mPictureHeight, Config.RGB_565);
-				bmp.setPixels(data, 0, mPictureWidth, 0, 0, mPictureWidth, mPictureHeight);
-				return bmp;
+			    }
+				return data;
 			}
 		},
 
 		// Screen
 		new PictureBlender() {
 			@Override
-			public Bitmap blend() {
-			    for(int i = 0; i < mPreviewRGBData.length; i++)
-			    {
-			        mPictureData[i * 3]     = 255 - (255 - mPictureData[i * 3]) 
-			        		* (255 - ((mPreviewRGBData[i] & 0x00FF0000) >> 16)) / 255;
-			        mPictureData[i * 3 + 1] = 255 - (255 - mPictureData[i * 3 + 1]) 
-			        		* (255 - ((mPreviewRGBData[i] & 0x0000FF00) >> 8)) / 255;
-			        mPictureData[i * 3 + 2] = 255 - (255 - mPictureData[i * 3 + 2]) 
-			        		* (255 - (mPreviewRGBData[i] & 0x000000FF)) / 255;
-			    }
-
+			public int[] blend(int[] previewRGBData, int frameCount) {
 				/** RGB1 RGB2 ... */
 				int[] data = new int[mPictureWidth * mPictureHeight];
-				for(int i = 0; i < data.length; i++)
-				{
+			    for(int i = 0; i < previewRGBData.length; i++)
+			    {
+			    	mPictureData[i * 3]     = 255 - (255 - mPictureData[i * 3]) 
+			        		* (255 - ((previewRGBData[i] & 0x00FF0000) >> 16)) / 255;
+			        mPictureData[i * 3 + 1] = 255 - (255 - mPictureData[i * 3 + 1]) 
+			        		* (255 - ((previewRGBData[i] & 0x0000FF00) >> 8)) / 255;
+			        mPictureData[i * 3 + 2] = 255 - (255 - mPictureData[i * 3 + 2]) 
+			        		* (255 - (previewRGBData[i] & 0x000000FF)) / 255;
+			        
 					data[i] = 0xFF000000;
 					data[i] |= mPictureData[i * 3]     << 16;
 					data[i] |= mPictureData[i * 3 + 1] << 8;
 					data[i] |= mPictureData[i * 3 + 2];
-				}
-				Bitmap bmp = Bitmap.createBitmap(mPictureWidth, mPictureHeight, Config.RGB_565);
-				bmp.setPixels(data, 0, mPictureWidth, 0, 0, mPictureWidth, mPictureHeight);
-				return bmp;
+			    }
+				return data;
 			}
 		}
 	};

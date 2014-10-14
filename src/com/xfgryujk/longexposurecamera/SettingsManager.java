@@ -159,7 +159,7 @@ public class SettingsManager {
 				edit.setText(mPath);
 				builder.setTitle(res.getString(R.string.path))
 				.setView(edit)
-				.setPositiveButton(res.getString(R.string.yes), new DialogInterface.OnClickListener() {
+				.setPositiveButton(res.getString(R.string.ok), new DialogInterface.OnClickListener() {
 					@Override
 					public void onClick(DialogInterface dialog, int which) {
 						mPath = edit.getText().toString();
@@ -167,7 +167,7 @@ public class SettingsManager {
 						((TextView)view.findViewById(R.id.setting_value)).setText(mPath);
 					}
 				})
-				.setNegativeButton(res.getString(R.string.no), null)
+				.setNegativeButton(res.getString(R.string.cancel), null)
 				.show();
 				break;
 				
@@ -177,7 +177,7 @@ public class SettingsManager {
 				seekBar.setProgress(mEV - params.getMinExposureCompensation());
 				builder.setTitle(res.getString(R.string.EV))
 				.setView(seekBar)
-				.setPositiveButton(res.getString(R.string.yes), new DialogInterface.OnClickListener() {
+				.setPositiveButton(res.getString(R.string.ok), new DialogInterface.OnClickListener() {
 					@Override
 					public void onClick(DialogInterface dialog, int which) {
 						mEV = seekBar.getProgress() + params.getMinExposureCompensation();
@@ -187,7 +187,7 @@ public class SettingsManager {
 						camera.setParameters(params);
 					}
 				})
-				.setNegativeButton(res.getString(R.string.no), null)
+				.setNegativeButton(res.getString(R.string.cancel), null)
 				.show();
 				break;
 				
