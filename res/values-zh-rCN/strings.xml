@@ -1,33 +1,30 @@
-<?xml version="1.0" encoding="utf-8"?>
+﻿<?xml version="1.0" encoding="utf-8"?>
 <resources>
 
     <string name="app_name">伪长曝光相机</string>
     
     <string name="click_again_to_exit">再按一次退出程序</string>
-    
-    <string name="blending_mode">混合模式</string>
-    <string-array name="blending_modes_description">
-        <item >平均值</item>
-        <item >最大值</item>
-        <item >滤色</item>
-    </string-array>
-    
-    <string name="path">保存路径</string>
-    <string name="cancel">取消</string>
-    
-    <string name="EV">曝光度</string>
-    
-    <string name="white_balance">白平衡</string>
-    
-    <string name="resolution">分辨率</string>
-    
-    <string name="ISO">感光度</string>
-    
-    <string name="error">错误</string>
-    <string name="ok">确定</string>
     <string name="failed_to_open_camera">打开相机失败</string>
     <string name="failed_to_create_directory">创建文件夹失败</string>
     <string name="failed_to_write_file">写文件失败</string>
     <string name="saved_to">已保存到</string>
+    
+    <string name="blending_mode">混合模式</string>
+    <string-array name="blending_modes_description">
+        <item >平均值</item>
+        <item >最大值1</item>
+        <item >最大值2</item>
+        <item >滤色</item>
+    </string-array>
+    <string name="EV">曝光度</string>
+    <string name="white_balance">白平衡</string>
+    <string name="resolution">分辨率</string>
+    <string name="ISO">感光度</string>
+    <string name="thread_count">线程数</string>
+    <string name="path">保存路径</string>
+    
+    <string name="error">错误</string>
+    <string name="ok">确定</string>
+    <string name="cancel">取消</string>
 
 </resources>

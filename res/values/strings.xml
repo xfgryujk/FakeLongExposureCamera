@@ -4,30 +4,27 @@
     <string name="app_name">Fake Long Exposure Camera</string>
     
     <string name="click_again_to_exit">Click again to exit</string>
-    
-    <string name="blending_mode">Blending mode</string>
-    <string-array name="blending_modes_description">
-        <item >Average</item>
-        <item >Max</item>
-        <item >Screen</item>
-    </string-array>
-    
-    <string name="path">Path</string>
-    <string name="cancel">Cancel</string>
-    
-    <string name="EV">EV</string>
-    
-    <string name="white_balance">White balance</string>
-    
-    <string name="resolution">Resolution</string>
-    
-    <string name="ISO">ISO</string>
-    
-    <string name="error">Error</string>
-    <string name="ok">OK</string>
     <string name="failed_to_open_camera">Failed to open camera</string>
     <string name="failed_to_create_directory">Failed to create directory</string>
     <string name="failed_to_write_file">Failed to write file</string>
     <string name="saved_to">Saved to</string>
+    
+    <string name="blending_mode">Blending mode</string>
+    <string-array name="blending_modes_description">
+        <item >Average</item>
+        <item >Max1</item>
+        <item >Max2</item>
+        <item >Screen</item>
+    </string-array>
+    <string name="EV">EV</string>
+    <string name="white_balance">White balance</string>
+    <string name="resolution">Resolution</string>
+    <string name="ISO">ISO</string>
+    <string name="thread_count">Thread count</string>
+    <string name="path">Path</string>
+    
+    <string name="error">Error</string>
+    <string name="ok">OK</string>
+    <string name="cancel">Cancel</string>
 
 </resources>

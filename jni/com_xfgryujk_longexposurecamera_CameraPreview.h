@@ -183,10 +183,18 @@ JNIEXPORT jintArray JNICALL Java_com_xfgryujk_longexposurecamera_CameraPreview_b
 
 /*
  * Class:     com_xfgryujk_longexposurecamera_CameraPreview
- * Method:    blendMax
+ * Method:    blendMax1
  * Signature: (II[I[II)[I
  */
-JNIEXPORT jintArray JNICALL Java_com_xfgryujk_longexposurecamera_CameraPreview_blendMax
+JNIEXPORT jintArray JNICALL Java_com_xfgryujk_longexposurecamera_CameraPreview_blendMax1
+  (JNIEnv *, jclass, jint, jint, jintArray, jintArray, jint);
+
+/*
+ * Class:     com_xfgryujk_longexposurecamera_CameraPreview
+ * Method:    blendMax2
+ * Signature: (II[I[II)[I
+ */
+JNIEXPORT jintArray JNICALL Java_com_xfgryujk_longexposurecamera_CameraPreview_blendMax2
   (JNIEnv *, jclass, jint, jint, jintArray, jintArray, jint);
 
 /*

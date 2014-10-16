@@ -77,8 +77,44 @@ JNIEXPORT jintArray JNICALL Java_com_xfgryujk_longexposurecamera_CameraPreview_b
 	return jiaData;
 }
 
-// blendMax
-JNIEXPORT jintArray JNICALL Java_com_xfgryujk_longexposurecamera_CameraPreview_blendMax
+// blendMax1
+JNIEXPORT jintArray JNICALL Java_com_xfgryujk_longexposurecamera_CameraPreview_blendMax1
+  (JNIEnv * env, jclass thiz, jint width, jint height, jintArray jiamPictureData, jintArray jiaPreviewRGBData, jint frameCount)
+{
+	jint* mPictureData = (*env)->GetIntArrayElements(env, jiamPictureData, NULL);
+	jint* previewRGBData = (*env)->GetIntArrayElements(env, jiaPreviewRGBData, NULL);
+	
+	int length = width * height;
+	jintArray jiaData = (*env)->NewIntArray(env, length);
+	/** RGB1 RGB2 ... */
+	jint* data = (*env)->GetIntArrayElements(env, jiaData, NULL);
+	int i;
+	for(i = 0; i < length; i++)
+	{
+		int r2 = (previewRGBData[i] & 0x00FF0000) >> 16;
+		int g2 = (previewRGBData[i] & 0x0000FF00) >> 8;
+		int b2 = previewRGBData[i] & 0x000000FF;
+		if(r2 + g2 + b2 > mPictureData[i * 3] + mPictureData[i * 3 + 1] + mPictureData[i * 3 + 2])
+		{
+			mPictureData[i * 3]     = r2;
+			mPictureData[i * 3 + 1] = g2;
+			mPictureData[i * 3 + 2] = b2;
+		 }
+		data[i] = 0xFF000000;
+		data[i] |= mPictureData[i * 3]     << 16;
+		data[i] |= mPictureData[i * 3 + 1] << 8;
+		data[i] |= mPictureData[i * 3 + 2];
+	}
+	
+	(*env)->ReleaseIntArrayElements(env, jiamPictureData, mPictureData, 0);
+	(*env)->ReleaseIntArrayElements(env, jiaPreviewRGBData, previewRGBData, JNI_ABORT);
+	
+	(*env)->ReleaseIntArrayElements(env, jiaData, data, 0);
+	return jiaData;
+}
+
+// blendMax2
+JNIEXPORT jintArray JNICALL Java_com_xfgryujk_longexposurecamera_CameraPreview_blendMax2
   (JNIEnv * env, jclass thiz, jint width, jint height, jintArray jiamPictureData, jintArray jiaPreviewRGBData, jint frameCount)
 {
 	jint* mPictureData = (*env)->GetIntArrayElements(env, jiamPictureData, NULL);

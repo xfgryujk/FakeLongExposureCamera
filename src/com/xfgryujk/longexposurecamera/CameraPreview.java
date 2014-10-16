@@ -34,7 +34,7 @@ public class CameraPreview extends SurfaceView implements SurfaceHolder.Callback
 	
 	protected SurfaceHolder mHolder;
 	protected MainActivity mActivity;
-	protected Camera mCamera;
+	protected Camera mCamera = null;
 	protected int mPictureWidth, mPictureHeight;
 	
 	protected volatile boolean mIsExposing = false;
@@ -227,17 +227,16 @@ public class CameraPreview extends SurfaceView implements SurfaceHolder.Callback
 			
 			// Start exposing threads
 			mIsExposing     = true;
-	        for(int i = 0; i < mMaxThreadCount; i++)
-		        (new Thread(new ExposingThread())).start();
-	        
-	        mActivity.mResultPreview.setVisibility(VISIBLE);
-	        mActivity.mOutputText.setVisibility(VISIBLE);
-	        mActivity.mButtonSetting.setVisibility(INVISIBLE);
+			for(int i = 0; i < SettingsManager.mMaxThreadCount; i++)
+				(new Thread(new ExposingThread())).start();
+			
+			mActivity.mResultPreview.setVisibility(VISIBLE);
+			mActivity.mOutputText.setVisibility(VISIBLE);
+			mActivity.mButtonSetting.setVisibility(INVISIBLE);
 			resize(120, 120, 200, 200);
 		}
 	}
 	
-	protected static final int mMaxThreadCount = Runtime.getRuntime().availableProcessors();
 	protected int mThreadCount = 0;
 	protected class ExposingThread implements Runnable {
 		@SuppressLint("SimpleDateFormat")
@@ -412,11 +411,19 @@ public class CameraPreview extends SurfaceView implements SurfaceHolder.Callback
 			}
 		},
 
-		// Max
+		// Max1
 		new PictureBlender() {
 			@Override
 			public int[] blend(int[] previewRGBData, int frameCount) {
-				return blendMax(mPictureWidth, mPictureHeight, mPictureData, previewRGBData, frameCount);
+				return blendMax1(mPictureWidth, mPictureHeight, mPictureData, previewRGBData, frameCount);
+			}
+		},
+
+		// Max2
+		new PictureBlender() {
+			@Override
+			public int[] blend(int[] previewRGBData, int frameCount) {
+				return blendMax2(mPictureWidth, mPictureHeight, mPictureData, previewRGBData, frameCount);
 			}
 		},
 
@@ -436,6 +443,7 @@ public class CameraPreview extends SurfaceView implements SurfaceHolder.Callback
 	
 	protected static final native void decodeYUV420SP(int[] rgb, final byte[] yuv420sp, int width, int height);
 	protected static final native int[] blendAverage(int width, int height, int[] mPictureData, final int[] previewRGBData, int frameCount);
-	protected static final native int[] blendMax(int width, int height, int[] mPictureData, final int[] previewRGBData, int frameCount);
+	protected static final native int[] blendMax1(int width, int height, int[] mPictureData, final int[] previewRGBData, int frameCount);
+	protected static final native int[] blendMax2(int width, int height, int[] mPictureData, final int[] previewRGBData, int frameCount);
 	protected static final native int[] blendScreen(int width, int height, int[] mPictureData, final int[] previewRGBData, int frameCount);
 }

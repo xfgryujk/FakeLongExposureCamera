@@ -2,10 +2,11 @@
 <resources>
     
     <string name="pref_blending_mode">blending_mode</string>
-    <string name="pref_path">path</string>
     <string name="pref_EV">EV</string>
     <string name="pref_white_balance">white_balance</string>
     <string name="pref_resolution">resolution</string>
     <string name="pref_ISO">ISO</string>
+    <string name="pref_thread_count">thread_count</string>
+    <string name="pref_path">path</string>
     
 </resources>

@@ -34,11 +34,12 @@ public class SettingsManager {
 	protected static MainActivity mMainActivity;
 	
 	public static int mBlendingMode;
-	public static String mPath;
 	public static int mEV;
 	public static String mWhiteBalance;
 	public static int mResolution;
 	public static String mISO;
+	public static int mMaxThreadCount;
+	public static String mPath;
 	
 	
 	/** Load settings */
@@ -49,11 +50,12 @@ public class SettingsManager {
         Resources res = mMainActivity.getResources();
         SharedPreferences pref = PreferenceManager.getDefaultSharedPreferences(mMainActivity);
         mBlendingMode   = pref.getInt(res.getString(R.string.pref_blending_mode), 0);
-        mPath           = pref.getString(res.getString(R.string.pref_path), Environment.getExternalStorageDirectory().getPath() + "/FakeLongExposureCamera");
         mEV             = pref.getInt(res.getString(R.string.pref_EV), 0);
         mWhiteBalance   = pref.getString(res.getString(R.string.pref_white_balance), "auto");
         mResolution     = pref.getInt(res.getString(R.string.pref_resolution), 0);
         mISO            = pref.getString(res.getString(R.string.pref_ISO), "auto");
+        mMaxThreadCount = pref.getInt(res.getString(R.string.pref_thread_count), Runtime.getRuntime().availableProcessors() * 2);
+        mPath           = pref.getString(res.getString(R.string.pref_path), Environment.getExternalStorageDirectory().getPath() + "/FakeLongExposureCamera");
 	}
 
 	/** Show settings dialog */
@@ -72,11 +74,6 @@ public class SettingsManager {
 			item = new HashMap<String, String>();
 			item.put("name", res.getString(R.string.blending_mode));
 			item.put("value", res.getStringArray(R.array.blending_modes_description)[mBlendingMode]);
-			data.add(item);
-			
-			item = new HashMap<String, String>();
-			item.put("name", res.getString(R.string.path));
-			item.put("value", mPath);
 			data.add(item);
 			
 			item = new HashMap<String, String>();
@@ -103,6 +100,16 @@ public class SettingsManager {
 			item = new HashMap<String, String>();
 			item.put("name", res.getString(R.string.ISO));
 			item.put("value", mISO);
+			data.add(item);
+			
+			item = new HashMap<String, String>();
+			item.put("name", res.getString(R.string.thread_count));
+			item.put("value", Integer.toString(mMaxThreadCount));
+			data.add(item);
+			
+			item = new HashMap<String, String>();
+			item.put("name", res.getString(R.string.path));
+			item.put("value", mPath);
 			data.add(item);
 			
 			SimpleAdapter adapter = new SimpleAdapter(mMainActivity, 
@@ -154,24 +161,7 @@ public class SettingsManager {
 				.show();
 				break;
 				
-			case 1: // Path
-				final EditText edit = new EditText(mMainActivity);
-				edit.setText(mPath);
-				builder.setTitle(res.getString(R.string.path))
-				.setView(edit)
-				.setPositiveButton(res.getString(R.string.ok), new DialogInterface.OnClickListener() {
-					@Override
-					public void onClick(DialogInterface dialog, int which) {
-						mPath = edit.getText().toString();
-						pref.edit().putString(res.getString(R.string.pref_path), mPath).commit();
-						((TextView)view.findViewById(R.id.setting_value)).setText(mPath);
-					}
-				})
-				.setNegativeButton(res.getString(R.string.cancel), null)
-				.show();
-				break;
-				
-			case 2: // EV
+			case 1: // EV
 				final SeekBar seekBar = new SeekBar(mMainActivity);
 				seekBar.setMax(params.getMaxExposureCompensation() - params.getMinExposureCompensation());
 				seekBar.setProgress(mEV - params.getMinExposureCompensation());
@@ -191,7 +181,7 @@ public class SettingsManager {
 				.show();
 				break;
 				
-			case 3: // White balance
+			case 2: // White balance
 				final List<String> whiteBalances = params.getSupportedWhiteBalance();
 				builder.setTitle(res.getString(R.string.white_balance))
 				.setItems(whiteBalances.toArray(new String[whiteBalances.size()]), new DialogInterface.OnClickListener() {
@@ -208,7 +198,7 @@ public class SettingsManager {
 				.show();
 				break;
 				
-			case 4: // Resolution
+			case 3: // Resolution
 				final List<Size> sizes = params.getSupportedPreviewSizes();
 				final String[] sizesString = new String[sizes.size()];
 				for(int i = 0; i < sizes.size(); i++)
@@ -217,17 +207,20 @@ public class SettingsManager {
 				.setItems(sizesString, new DialogInterface.OnClickListener() {
 					@Override
 					public void onClick(DialogInterface dialog, int which) {
-						mResolution = which;
-						pref.edit().putInt(res.getString(R.string.pref_resolution), mResolution).commit();
-						((TextView)view.findViewById(R.id.setting_value)).setText(sizesString[which]);
-						mMainActivity.mCameraPreview.resetCamera();
+						if(which != mResolution)
+						{
+							mResolution = which;
+							pref.edit().putInt(res.getString(R.string.pref_resolution), mResolution).commit();
+							((TextView)view.findViewById(R.id.setting_value)).setText(sizesString[which]);
+							mMainActivity.mCameraPreview.resetCamera();
+						}
 					}
 				})
 				.create()
 				.show();
 				break;
 				
-			case 5: // ISO ***** Not every device support!
+			case 4: // ISO ***** Not every device support!
 				// Test
 				/*String flat = params.flatten();
 				Log.i(TAG, flat);
@@ -284,6 +277,41 @@ public class SettingsManager {
 					}
 				})
 				.create()
+				.show();
+				break;
+				
+			case 5: // Thread count
+				final SeekBar seekBar2 = new SeekBar(mMainActivity);
+				seekBar2.setMax(15);
+				seekBar2.setProgress(mMaxThreadCount - 1);
+				builder.setTitle(res.getString(R.string.thread_count))
+				.setView(seekBar2)
+				.setPositiveButton(res.getString(R.string.ok), new DialogInterface.OnClickListener() {
+					@Override
+					public void onClick(DialogInterface dialog, int which) {
+						mMaxThreadCount = seekBar2.getProgress() + 1;
+						pref.edit().putInt(res.getString(R.string.pref_thread_count), mMaxThreadCount).commit();
+						((TextView)view.findViewById(R.id.setting_value)).setText(Integer.toString(mMaxThreadCount));
+					}
+				})
+				.setNegativeButton(res.getString(R.string.cancel), null)
+				.show();
+				break;
+				
+			case 6: // Path
+				final EditText edit = new EditText(mMainActivity);
+				edit.setText(mPath);
+				builder.setTitle(res.getString(R.string.path))
+				.setView(edit)
+				.setPositiveButton(res.getString(R.string.ok), new DialogInterface.OnClickListener() {
+					@Override
+					public void onClick(DialogInterface dialog, int which) {
+						mPath = edit.getText().toString();
+						pref.edit().putString(res.getString(R.string.pref_path), mPath).commit();
+						((TextView)view.findViewById(R.id.setting_value)).setText(mPath);
+					}
+				})
+				.setNegativeButton(res.getString(R.string.cancel), null)
 				.show();
 				break;
 			}
