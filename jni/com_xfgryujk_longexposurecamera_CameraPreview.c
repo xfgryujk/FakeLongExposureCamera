@@ -1,15 +1,27 @@
 #undef __cplusplus
 #include <jni.h>
+#include <android/log.h>
+#include <android/bitmap.h>
+#include <string.h>
 #include "com_xfgryujk_longexposurecamera_CameraPreview.h"
 
-#define NULL ((void*)0)
+typedef unsigned char BYTE;
+
+const char* TAG = "ImageJni";
+#define  LOGI(...)  __android_log_print(ANDROID_LOG_INFO,TAG,__VA_ARGS__)
+
+int width, height;
+int stride;
+int blendingMode;
+// R1 G1 B1 R2 G2 B2 ...
+int* picturesData;
 
 
 // decodeYUV420SP
 JNIEXPORT void JNICALL Java_com_xfgryujk_longexposurecamera_CameraPreview_decodeYUV420SP
   (JNIEnv * env, jclass thiz, jintArray jiaRgb, jbyteArray jbaYuv420sp, jint width, jint height)
 {
-	unsigned char* yuv420sp = (unsigned char*) (*env)->GetByteArrayElements(env, jbaYuv420sp, NULL);
+	BYTE* yuv420sp = (unsigned char*) (*env)->GetByteArrayElements(env, jbaYuv420sp, NULL);
 	jint* rgb = (*env)->GetIntArrayElements(env, jiaRgb, NULL);
 
 	const int frameSize = width * height;
@@ -46,142 +58,159 @@ JNIEXPORT void JNICALL Java_com_xfgryujk_longexposurecamera_CameraPreview_decode
 	(*env)->ReleaseIntArrayElements(env, jiaRgb, rgb, 0);
 }
 
-// blendAverage
-JNIEXPORT jintArray JNICALL Java_com_xfgryujk_longexposurecamera_CameraPreview_blendAverage
-  (JNIEnv * env, jclass thiz, jint width, jint height, jintArray jiamPictureData, jintArray jiaPreviewRGBData, jint frameCount)
+// blenderInitialize
+JNIEXPORT void JNICALL Java_com_xfgryujk_longexposurecamera_CameraPreview_blenderInitialize
+  (JNIEnv * env, jclass thiz, jobject result, jint _blendingMode)
 {
-	jint* mPictureData = (*env)->GetIntArrayElements(env, jiamPictureData, NULL);
-	jint* previewRGBData = (*env)->GetIntArrayElements(env, jiaPreviewRGBData, NULL);
-
-	int length = width * height;
-	jintArray jiaData = (*env)->NewIntArray(env, length);
-	/** RGB1 RGB2 ... */
-	jint* data = (*env)->GetIntArrayElements(env, jiaData, NULL);
-	int i;
-	for(i = 0; i < length; i++)
+	LOGI("blenderInitialize()");
+	AndroidBitmapInfo info;
+	AndroidBitmap_getInfo(env, result, &info);
+	width          = info.width;
+	height         = info.height;
+	stride         = info.stride;
+	blendingMode   = _blendingMode;
+	LOGI("width = %d height = %d stride = %d blendingMode = %d", width, height, stride, blendingMode);
+	
+	int size = width * height;
+	if(_blendingMode == 0)
 	{
-		mPictureData[i * 3]     += (previewRGBData[i] & 0x00FF0000) >> 16;
-		mPictureData[i * 3 + 1] += (previewRGBData[i] & 0x0000FF00) >> 8;
-		mPictureData[i * 3 + 2] += (previewRGBData[i] & 0x000000FF);
-		
-		data[i] = 0xFF000000;
-		data[i] |= (mPictureData[i * 3]     / frameCount) << 16;
-		data[i] |= (mPictureData[i * 3 + 1] / frameCount) << 8;
-		data[i] |=  mPictureData[i * 3 + 2] / frameCount;
+		picturesData = (int*)malloc(size * 3 * sizeof(int));
+		memset(picturesData, 0, size * 3 * sizeof(int));
 	}
+
+	// Initialize alpha
+	// R1 G1 B1 A1 R2 G2 B2 A2 ...
+	BYTE* data;
+	AndroidBitmap_lockPixels(env, result, (void**)&data);
+	memset(data, 0, size * 4);
+	data += 3;
+	int i, j;
+	for(i = 0; i < height; i++, data += stride)
+		for(j = 0; j < width; j++)
+			data[j * 4] = 255;
+	AndroidBitmap_unlockPixels(env, result);
+}
+
+// blenderUninitialize
+JNIEXPORT void JNICALL Java_com_xfgryujk_longexposurecamera_CameraPreview_blenderUninitialize
+  (JNIEnv * env, jclass thiz)
+{
+	LOGI("blenderUninitialize()");
+	if(blendingMode == 0)
+		free(picturesData);
+}
+
+// blendAverage
+JNIEXPORT void JNICALL Java_com_xfgryujk_longexposurecamera_CameraPreview_blendAverage
+  (JNIEnv * env, jclass thiz, jobject resultBitmap, jintArray jiaPreviewRGBData, jint frameCount)
+{
+	// B1 G1 R1 A1 B2 G2 R2 A2 ...
+	BYTE* previewRGBData  = (BYTE*)(*env)->GetIntArrayElements(env, jiaPreviewRGBData, NULL);
+	BYTE* pPreviewRGBData = previewRGBData;
 	
-	(*env)->ReleaseIntArrayElements(env, jiamPictureData, mPictureData, 0);
-	(*env)->ReleaseIntArrayElements(env, jiaPreviewRGBData, previewRGBData, JNI_ABORT);
+	// R1 G1 B1 A1 R2 G2 B2 A2 ...
+	BYTE* data;
+	AndroidBitmap_lockPixels(env, resultBitmap, (void**)&data);
+	int* pPicturesData = picturesData;
+	int i, j;
+	for(i = 0; i < height; i++, data += stride)
+		for(j = 0; j < width; j++, pPreviewRGBData += 4, pPicturesData += 3)
+		{
+			*pPicturesData       += *(pPreviewRGBData + 2);
+			data[j * 4]           = (BYTE)(*pPicturesData       / frameCount);
+			*(pPicturesData + 1) += *(pPreviewRGBData + 1);
+			data[j * 4 + 1]       = (BYTE)(*(pPicturesData + 1) / frameCount);
+			*(pPicturesData + 2) += *pPreviewRGBData;
+			data[j * 4 + 2]       = (BYTE)(*(pPicturesData + 2) / frameCount);
+		}
+	AndroidBitmap_unlockPixels(env, resultBitmap);
 	
-	(*env)->ReleaseIntArrayElements(env, jiaData, data, 0);
-	return jiaData;
+	(*env)->ReleaseIntArrayElements(env, jiaPreviewRGBData, (jint*)previewRGBData, JNI_ABORT);
 }
 
 // blendMax1
-JNIEXPORT jintArray JNICALL Java_com_xfgryujk_longexposurecamera_CameraPreview_blendMax1
-  (JNIEnv * env, jclass thiz, jint width, jint height, jintArray jiamPictureData, jintArray jiaPreviewRGBData, jint frameCount)
+JNIEXPORT void JNICALL Java_com_xfgryujk_longexposurecamera_CameraPreview_blendMax1
+  (JNIEnv * env, jclass thiz, jobject resultBitmap, jintArray jiaPreviewRGBData, jint frameCount)
 {
-	jint* mPictureData = (*env)->GetIntArrayElements(env, jiamPictureData, NULL);
-	jint* previewRGBData = (*env)->GetIntArrayElements(env, jiaPreviewRGBData, NULL);
+	// B1 G1 R1 A1 B2 G2 R2 A2 ...
+	BYTE* previewRGBData  = (BYTE*)(*env)->GetIntArrayElements(env, jiaPreviewRGBData, NULL);
+	BYTE* pPreviewRGBData = previewRGBData;
 	
-	int length = width * height;
-	jintArray jiaData = (*env)->NewIntArray(env, length);
-	/** RGB1 RGB2 ... */
-	jint* data = (*env)->GetIntArrayElements(env, jiaData, NULL);
-	int i;
-	for(i = 0; i < length; i++)
-	{
-		int r2 = (previewRGBData[i] & 0x00FF0000) >> 16;
-		int g2 = (previewRGBData[i] & 0x0000FF00) >> 8;
-		int b2 = previewRGBData[i] & 0x000000FF;
-		if(r2 + g2 + b2 > mPictureData[i * 3] + mPictureData[i * 3 + 1] + mPictureData[i * 3 + 2])
+	// R1 G1 B1 A1 R2 G2 B2 A2 ...
+	BYTE* data;
+	AndroidBitmap_lockPixels(env, resultBitmap, (void**)&data);
+	int i, j;
+	for(i = 0; i < height; i++, data += stride)
+		for(j = 0; j < width; j++, pPreviewRGBData += 4)
 		{
-			mPictureData[i * 3]     = r2;
-			mPictureData[i * 3 + 1] = g2;
-			mPictureData[i * 3 + 2] = b2;
-		 }
-		data[i] = 0xFF000000;
-		data[i] |= mPictureData[i * 3]     << 16;
-		data[i] |= mPictureData[i * 3 + 1] << 8;
-		data[i] |= mPictureData[i * 3 + 2];
-	}
+			int r2 = *(pPreviewRGBData + 2);
+			int g2 = *(pPreviewRGBData + 1);
+			int b2 = *pPreviewRGBData;
+			if(r2 + g2 + b2 > data[j * 4] + data[j * 4 + 1] + data[j * 4 + 2])
+			{
+				data[j * 4]     = r2;
+				data[j * 4 + 1] = g2;
+				data[j * 4 + 2] = b2;
+			 }
+		}
+	AndroidBitmap_unlockPixels(env, resultBitmap);
 	
-	(*env)->ReleaseIntArrayElements(env, jiamPictureData, mPictureData, 0);
-	(*env)->ReleaseIntArrayElements(env, jiaPreviewRGBData, previewRGBData, JNI_ABORT);
-	
-	(*env)->ReleaseIntArrayElements(env, jiaData, data, 0);
-	return jiaData;
+	(*env)->ReleaseIntArrayElements(env, jiaPreviewRGBData, (jint*)previewRGBData, JNI_ABORT);
 }
 
 // blendMax2
-JNIEXPORT jintArray JNICALL Java_com_xfgryujk_longexposurecamera_CameraPreview_blendMax2
-  (JNIEnv * env, jclass thiz, jint width, jint height, jintArray jiamPictureData, jintArray jiaPreviewRGBData, jint frameCount)
+JNIEXPORT void JNICALL Java_com_xfgryujk_longexposurecamera_CameraPreview_blendMax2
+  (JNIEnv * env, jclass thiz, jobject resultBitmap, jintArray jiaPreviewRGBData, jint frameCount)
 {
-	jint* mPictureData = (*env)->GetIntArrayElements(env, jiamPictureData, NULL);
-	jint* previewRGBData = (*env)->GetIntArrayElements(env, jiaPreviewRGBData, NULL);
+	// B1 G1 R1 A1 B2 G2 R2 A2 ...
+	BYTE* previewRGBData  = (BYTE*)(*env)->GetIntArrayElements(env, jiaPreviewRGBData, NULL);
+	BYTE* pPreviewRGBData = previewRGBData;
 	
-	int length = width * height;
-	jintArray jiaData = (*env)->NewIntArray(env, length);
-	/** RGB1 RGB2 ... */
-	jint* data = (*env)->GetIntArrayElements(env, jiaData, NULL);
-	int i;
-	for(i = 0; i < length; i++)
-	{
-		int r1 = mPictureData[i * 3];
-		int g1 = mPictureData[i * 3 + 1];
-		int b1 = mPictureData[i * 3 + 2];
-		int r2 = (previewRGBData[i] & 0x00FF0000) >> 16;
-		int g2 = (previewRGBData[i] & 0x0000FF00) >> 8;
-		int b2 = previewRGBData[i] & 0x000000FF;
-		if(r2 * r2 + g2 * g2 + b2 * b2 > r1 * r1 + g1 * g1 + b1 * b1)
+	// R1 G1 B1 A1 R2 G2 B2 A2 ...
+	BYTE* data;
+	AndroidBitmap_lockPixels(env, resultBitmap, (void**)&data);
+	int i, j;
+	for(i = 0; i < height; i++, data += stride)
+		for(j = 0; j < width; j++, pPreviewRGBData += 4)
 		{
-			mPictureData[i * 3]     = r2;
-			mPictureData[i * 3 + 1] = g2;
-			mPictureData[i * 3 + 2] = b2;
-		 }
-		data[i] = 0xFF000000;
-		data[i] |= mPictureData[i * 3]     << 16;
-		data[i] |= mPictureData[i * 3 + 1] << 8;
-		data[i] |= mPictureData[i * 3 + 2];
-	}
+			int r1 = data[j * 4];
+			int g1 = data[j * 4 + 1];
+			int b1 = data[j * 4 + 2];
+			int r2 = *(pPreviewRGBData + 2);
+			int g2 = *(pPreviewRGBData + 1);
+			int b2 = *pPreviewRGBData;
+			if(r2 * r2 + g2 * g2 + b2 * b2 > r1 * r1 + g1 * g1 + b1 * b1)
+			{
+				data[j * 4]     = r2;
+				data[j * 4 + 1] = g2;
+				data[j * 4 + 2] = b2;
+			 }
+		}
+	AndroidBitmap_unlockPixels(env, resultBitmap);
 	
-	(*env)->ReleaseIntArrayElements(env, jiamPictureData, mPictureData, 0);
-	(*env)->ReleaseIntArrayElements(env, jiaPreviewRGBData, previewRGBData, JNI_ABORT);
-	
-	(*env)->ReleaseIntArrayElements(env, jiaData, data, 0);
-	return jiaData;
+	(*env)->ReleaseIntArrayElements(env, jiaPreviewRGBData, (jint*)previewRGBData, JNI_ABORT);
 }
 
 // blendScreen
-JNIEXPORT jintArray JNICALL Java_com_xfgryujk_longexposurecamera_CameraPreview_blendScreen
-  (JNIEnv * env, jclass thiz, jint width, jint height, jintArray jiamPictureData, jintArray jiaPreviewRGBData, jint frameCount)
+JNIEXPORT void JNICALL Java_com_xfgryujk_longexposurecamera_CameraPreview_blendScreen
+  (JNIEnv * env, jclass thiz, jobject resultBitmap, jintArray jiaPreviewRGBData, jint frameCount)
 {
-	jint* mPictureData = (*env)->GetIntArrayElements(env, jiamPictureData, NULL);
-	jint* previewRGBData = (*env)->GetIntArrayElements(env, jiaPreviewRGBData, NULL);
-
-	int length = width * height;
-	jintArray jiaData = (*env)->NewIntArray(env, length);
-	/** RGB1 RGB2 ... */
-	jint* data = (*env)->GetIntArrayElements(env, jiaData, NULL);
-	int i;
-	for(i = 0; i < length; i++)
-	{
-		mPictureData[i * 3]     = 255 - (255 - mPictureData[i * 3]) 
-				* (255 - ((previewRGBData[i] & 0x00FF0000) >> 16)) / 255;
-		mPictureData[i * 3 + 1] = 255 - (255 - mPictureData[i * 3 + 1]) 
-				* (255 - ((previewRGBData[i] & 0x0000FF00) >> 8)) / 255;
-		mPictureData[i * 3 + 2] = 255 - (255 - mPictureData[i * 3 + 2]) 
-				* (255 - (previewRGBData[i] & 0x000000FF)) / 255;
-		
-		data[i] = 0xFF000000;
-		data[i] |= mPictureData[i * 3]     << 16;
-		data[i] |= mPictureData[i * 3 + 1] << 8;
-		data[i] |= mPictureData[i * 3 + 2];
-	}
+	// B1 G1 R1 A1 B2 G2 R2 A2 ...
+	BYTE* previewRGBData  = (BYTE*)(*env)->GetIntArrayElements(env, jiaPreviewRGBData, NULL);
+	BYTE* pPreviewRGBData = previewRGBData;
 	
-	(*env)->ReleaseIntArrayElements(env, jiamPictureData, mPictureData, 0);
-	(*env)->ReleaseIntArrayElements(env, jiaPreviewRGBData, previewRGBData, JNI_ABORT);
+	// R1 G1 B1 A1 R2 G2 B2 A2 ...
+	BYTE* data;
+	AndroidBitmap_lockPixels(env, resultBitmap, (void**)&data);
+	int i, j;
+	for(i = 0; i < height; i++, data += stride)
+		for(j = 0; j < width; j++, pPreviewRGBData += 4)
+		{
+			data[j * 4]     = 255 - (255 - data[j * 4])     * (255 - *(pPreviewRGBData + 2)) / 255;
+			data[j * 4 + 1] = 255 - (255 - data[j * 4 + 1]) * (255 - *(pPreviewRGBData + 1)) / 255;
+			data[j * 4 + 2] = 255 - (255 - data[j * 4 + 2]) * (255 - *pPreviewRGBData      ) / 255;
+		}
+	AndroidBitmap_unlockPixels(env, resultBitmap);
 	
-	(*env)->ReleaseIntArrayElements(env, jiaData, data, 0);
-	return jiaData;
+	(*env)->ReleaseIntArrayElements(env, jiaPreviewRGBData, (jint*)previewRGBData, JNI_ABORT);
 }

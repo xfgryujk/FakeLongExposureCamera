@@ -175,35 +175,51 @@ JNIEXPORT void JNICALL Java_com_xfgryujk_longexposurecamera_CameraPreview_decode
 
 /*
  * Class:     com_xfgryujk_longexposurecamera_CameraPreview
- * Method:    blendAverage
- * Signature: (II[I[II)[I
+ * Method:    blenderInitialize
+ * Signature: (Landroid/graphics/Bitmap;I)V
  */
-JNIEXPORT jintArray JNICALL Java_com_xfgryujk_longexposurecamera_CameraPreview_blendAverage
-  (JNIEnv *, jclass, jint, jint, jintArray, jintArray, jint);
+JNIEXPORT void JNICALL Java_com_xfgryujk_longexposurecamera_CameraPreview_blenderInitialize
+  (JNIEnv *, jclass, jobject, jint);
+
+/*
+ * Class:     com_xfgryujk_longexposurecamera_CameraPreview
+ * Method:    blenderUninitialize
+ * Signature: ()V
+ */
+JNIEXPORT void JNICALL Java_com_xfgryujk_longexposurecamera_CameraPreview_blenderUninitialize
+  (JNIEnv *, jclass);
+
+/*
+ * Class:     com_xfgryujk_longexposurecamera_CameraPreview
+ * Method:    blendAverage
+ * Signature: (Landroid/graphics/Bitmap;[II)V
+ */
+JNIEXPORT void JNICALL Java_com_xfgryujk_longexposurecamera_CameraPreview_blendAverage
+  (JNIEnv *, jclass, jobject, jintArray, jint);
 
 /*
  * Class:     com_xfgryujk_longexposurecamera_CameraPreview
  * Method:    blendMax1
- * Signature: (II[I[II)[I
+ * Signature: (Landroid/graphics/Bitmap;[II)V
  */
-JNIEXPORT jintArray JNICALL Java_com_xfgryujk_longexposurecamera_CameraPreview_blendMax1
-  (JNIEnv *, jclass, jint, jint, jintArray, jintArray, jint);
+JNIEXPORT void JNICALL Java_com_xfgryujk_longexposurecamera_CameraPreview_blendMax1
+  (JNIEnv *, jclass, jobject, jintArray, jint);
 
 /*
  * Class:     com_xfgryujk_longexposurecamera_CameraPreview
  * Method:    blendMax2
- * Signature: (II[I[II)[I
+ * Signature: (Landroid/graphics/Bitmap;[II)V
  */
-JNIEXPORT jintArray JNICALL Java_com_xfgryujk_longexposurecamera_CameraPreview_blendMax2
-  (JNIEnv *, jclass, jint, jint, jintArray, jintArray, jint);
+JNIEXPORT void JNICALL Java_com_xfgryujk_longexposurecamera_CameraPreview_blendMax2
+  (JNIEnv *, jclass, jobject, jintArray, jint);
 
 /*
  * Class:     com_xfgryujk_longexposurecamera_CameraPreview
  * Method:    blendScreen
- * Signature: (II[I[II)[I
+ * Signature: (Landroid/graphics/Bitmap;[II)V
  */
-JNIEXPORT jintArray JNICALL Java_com_xfgryujk_longexposurecamera_CameraPreview_blendScreen
-  (JNIEnv *, jclass, jint, jint, jintArray, jintArray, jint);
+JNIEXPORT void JNICALL Java_com_xfgryujk_longexposurecamera_CameraPreview_blendScreen
+  (JNIEnv *, jclass, jobject, jintArray, jint);
 
 #ifdef __cplusplus
 }

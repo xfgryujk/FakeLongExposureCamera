@@ -40,7 +40,7 @@
     <IncludePath>$(NDK)\platforms\android-19\arch-x86\usr\include;$(IncludePath)</IncludePath>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
-    <IncludePath>$(NDK)\platforms\android-19\arch-x86\usr\include;$(IncludePath)</IncludePath>
+    <IncludePath>$(NDK)\platforms\android-8\arch-arm\usr\include;$(IncludePath)</IncludePath>
   </PropertyGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
     <ClCompile>
@@ -72,6 +72,10 @@
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\com_xfgryujk_longexposurecamera_CameraPreview.h" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="..\Android.mk" />
+    <None Include="..\Application.mk" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

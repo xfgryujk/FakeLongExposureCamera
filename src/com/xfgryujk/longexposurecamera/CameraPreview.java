@@ -41,8 +41,6 @@ public class CameraPreview extends SurfaceView implements SurfaceHolder.Callback
 	
 	/** YUV */
 	protected byte[] mPreviewData;
-	/** R1 G1 B1 R2 G2 B2 ... */
-	protected int[] mPictureData;
 	protected int mFrameCount;
 	
 	Bitmap mResultBitmap;
@@ -89,7 +87,7 @@ public class CameraPreview extends SurfaceView implements SurfaceHolder.Callback
 		releaseCamera();
 	}
 	
-	private void resize(int centreX, int centreY, int maxWidth, int maxHeight) {
+	public void resize(int centreX, int centreY, int maxWidth, int maxHeight) {
 		FrameLayout.LayoutParams lp = (FrameLayout.LayoutParams)getLayoutParams();
 		float scale1  = (float)maxWidth / (float)mPictureWidth;
 		float scale2  = (float)maxHeight / (float)mPictureHeight;
@@ -99,6 +97,13 @@ public class CameraPreview extends SurfaceView implements SurfaceHolder.Callback
 		lp.leftMargin = centreX - lp.width / 2;
 		lp.topMargin  = centreY - lp.height / 2;
 		setLayoutParams(lp);
+	}
+	
+	/** Full screen */
+	public void resize() {
+		DisplayMetrics dm = new DisplayMetrics();
+		mActivity.getWindowManager().getDefaultDisplay().getMetrics(dm);
+		resize(dm.widthPixels / 2, dm.heightPixels / 2, dm.widthPixels, dm.heightPixels);
 	}
 
 	/** Open camera, set parameters */
@@ -153,11 +158,7 @@ public class CameraPreview extends SurfaceView implements SurfaceHolder.Callback
 		if(mIsExposing)
 			resize(120, 120, 200, 200);
 		else
-		{
-			DisplayMetrics dm = new DisplayMetrics();
-			mActivity.getWindowManager().getDefaultDisplay().getMetrics(dm);
-			resize(dm.widthPixels / 2, dm.heightPixels / 2, dm.widthPixels, dm.heightPixels);
-		}
+			resize();
 		
 		// Set preview display
 		try {
@@ -209,17 +210,16 @@ public class CameraPreview extends SurfaceView implements SurfaceHolder.Callback
 			mIsExposing = false;
 			// Wait for exposing threads
 			mActivity.mButtonShutter.setVisibility(INVISIBLE);
-    		synchronized (this)
-    		{
+    		synchronized (this) {
     			notifyAll();
     		}
 		}
 		else
 		{
 			Log.i(TAG, "Start exposing");
-			mPictureData    = new int[mPictureWidth * mPictureHeight * 3];
-			mResultBitmap   = Bitmap.createBitmap(mPictureWidth, mPictureHeight, Config.RGB_565);
+			mResultBitmap   = Bitmap.createBitmap(mPictureWidth, mPictureHeight, Config.ARGB_8888);
 			mActivity.mResultPreview.setImageBitmap(mResultBitmap);
+			blenderInitialize(mResultBitmap, SettingsManager.mBlendingMode);
 			mFrameCount     = 0;
 			
 			mLastFPSTime    = System.currentTimeMillis();
@@ -273,14 +273,9 @@ public class CameraPreview extends SurfaceView implements SurfaceHolder.Callback
 		        decodeYUV420SP(previewRGBData, previewData, mPictureWidth, mPictureHeight);
 				
 				// Blend pictures and show
-				int[] data;
-				synchronized (mPictureData) {
-					//Log.i(TAG, id + " is blending, frameCount = " + frameCount);
-			        data = mPictureBlender[SettingsManager.mBlendingMode].blend(previewRGBData, frameCount);
-				}
 				synchronized (mResultBitmap) {
-					//Log.i(TAG, id + " is setting pixels");
-					mResultBitmap.setPixels(data, 0, mPictureWidth, 0, 0, mPictureWidth, mPictureHeight);
+					//Log.i(TAG, id + " is blending");
+					mPictureBlender[SettingsManager.mBlendingMode].blend(previewRGBData, frameCount);
 					if(!mHandler.hasMessages(MSG_UPDATE_PREVIEW))
 						mHandler.sendEmptyMessage(MSG_UPDATE_PREVIEW);
 				}
@@ -292,6 +287,7 @@ public class CameraPreview extends SurfaceView implements SurfaceHolder.Callback
 			}
 			previewData    = null;
 			previewRGBData = null;
+			blenderUninitialize();
 			
 			// Exposing finish
 			mHandler.sendEmptyMessage(MSG_EXPOSING_FINISH);
@@ -371,9 +367,7 @@ public class CameraPreview extends SurfaceView implements SurfaceHolder.Callback
 		        mActivity.mOutputText.setText("");
 				
 				// Resize
-				DisplayMetrics dm = new DisplayMetrics();
-				mActivity.getWindowManager().getDefaultDisplay().getMetrics(dm);
-				resize(dm.widthPixels / 2, dm.heightPixels / 2, dm.widthPixels, dm.heightPixels);
+				resize();
 				break;
 				
 			case MSG_RESTORE:
@@ -385,7 +379,6 @@ public class CameraPreview extends SurfaceView implements SurfaceHolder.Callback
 				
 				// Release
 				mPreviewData     = null;
-				mPictureData     = null;
 				mResultBitmap.recycle();
 				mResultBitmap    = null;
 				break;
@@ -400,38 +393,38 @@ public class CameraPreview extends SurfaceView implements SurfaceHolder.Callback
 	
 	protected interface PictureBlender {
 		/** Called by exposing thread */
-		public int[] blend(int[] previewRGBData, int frameCount);
+		public void blend(int[] previewRGBData, int frameCount);
 	}
 	protected final PictureBlender[] mPictureBlender = {
 		// Average
 		new PictureBlender() {
 			@Override
-			public int[] blend(int[] previewRGBData, int frameCount) {
-				return blendAverage(mPictureWidth, mPictureHeight, mPictureData, previewRGBData, frameCount);
+			public void blend(int[] previewRGBData, int frameCount) {
+				blendAverage(mResultBitmap, previewRGBData, frameCount);
 			}
 		},
 
 		// Max1
 		new PictureBlender() {
 			@Override
-			public int[] blend(int[] previewRGBData, int frameCount) {
-				return blendMax1(mPictureWidth, mPictureHeight, mPictureData, previewRGBData, frameCount);
+			public void blend(int[] previewRGBData, int frameCount) {
+				blendMax1(mResultBitmap, previewRGBData, frameCount);
 			}
 		},
 
 		// Max2
 		new PictureBlender() {
 			@Override
-			public int[] blend(int[] previewRGBData, int frameCount) {
-				return blendMax2(mPictureWidth, mPictureHeight, mPictureData, previewRGBData, frameCount);
+			public void blend(int[] previewRGBData, int frameCount) {
+				blendMax2(mResultBitmap, previewRGBData, frameCount);
 			}
 		},
 
 		// Screen
 		new PictureBlender() {
 			@Override
-			public int[] blend(int[] previewRGBData, int frameCount) {
-				return blendScreen(mPictureWidth, mPictureHeight, mPictureData, previewRGBData, frameCount);
+			public void blend(int[] previewRGBData, int frameCount) {
+				blendScreen(mResultBitmap, previewRGBData, frameCount);
 			}
 		}
 	};
@@ -441,9 +434,11 @@ public class CameraPreview extends SurfaceView implements SurfaceHolder.Callback
 		System.loadLibrary("ImageJni");
 	}
 	
-	protected static final native void decodeYUV420SP(int[] rgb, final byte[] yuv420sp, int width, int height);
-	protected static final native int[] blendAverage(int width, int height, int[] mPictureData, final int[] previewRGBData, int frameCount);
-	protected static final native int[] blendMax1(int width, int height, int[] mPictureData, final int[] previewRGBData, int frameCount);
-	protected static final native int[] blendMax2(int width, int height, int[] mPictureData, final int[] previewRGBData, int frameCount);
-	protected static final native int[] blendScreen(int width, int height, int[] mPictureData, final int[] previewRGBData, int frameCount);
+	protected static final native void decodeYUV420SP(int[] rgb, byte[] yuv420sp, int width, int height);
+	protected static final native void blenderInitialize(Bitmap result, int blendingMode);
+	protected static final native void blenderUninitialize();
+	protected static final native void blendAverage(Bitmap resultBitmap, int[] previewRGBData, int frameCount);
+	protected static final native void blendMax1(Bitmap resultBitmap, int[] previewRGBData, int frameCount);
+	protected static final native void blendMax2(Bitmap resultBitmap, int[] previewRGBData, int frameCount);
+	protected static final native void blendScreen(Bitmap resultBitmap, int[] previewRGBData, int frameCount);
 }

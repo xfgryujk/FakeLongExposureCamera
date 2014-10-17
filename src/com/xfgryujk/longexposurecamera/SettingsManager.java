@@ -54,7 +54,7 @@ public class SettingsManager {
         mWhiteBalance   = pref.getString(res.getString(R.string.pref_white_balance), "auto");
         mResolution     = pref.getInt(res.getString(R.string.pref_resolution), 0);
         mISO            = pref.getString(res.getString(R.string.pref_ISO), "auto");
-        mMaxThreadCount = pref.getInt(res.getString(R.string.pref_thread_count), Runtime.getRuntime().availableProcessors() * 2);
+        mMaxThreadCount = pref.getInt(res.getString(R.string.pref_thread_count), Math.max(16, Runtime.getRuntime().availableProcessors() * 2));
         mPath           = pref.getString(res.getString(R.string.pref_path), Environment.getExternalStorageDirectory().getPath() + "/FakeLongExposureCamera");
 	}
 
