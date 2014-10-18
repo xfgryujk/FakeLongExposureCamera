@@ -1,22 +1,17 @@
 package com.xfgryujk.longexposurecamera;
 
-import java.io.BufferedOutputStream;
-import java.io.File;
-import java.io.FileOutputStream;
 import java.io.IOException;
-import java.text.SimpleDateFormat;
-import java.util.Date;
 import java.util.List;
 
 import android.annotation.SuppressLint;
 import android.app.AlertDialog;
 import android.content.Context;
 import android.content.DialogInterface;
+import android.content.Intent;
 import android.graphics.Bitmap;
 import android.graphics.Bitmap.Config;
 import android.hardware.Camera;
 import android.hardware.Camera.PreviewCallback;
-import android.os.Bundle;
 import android.os.Handler;
 import android.os.Message;
 import android.util.AttributeSet;
@@ -27,7 +22,6 @@ import android.view.SurfaceView;
 import android.view.View;
 import android.view.View.OnClickListener;
 import android.widget.FrameLayout;
-import android.widget.Toast;
 
 public class CameraPreview extends SurfaceView implements SurfaceHolder.Callback, OnClickListener {
 	private static final String TAG = "CameraPreview";
@@ -43,7 +37,7 @@ public class CameraPreview extends SurfaceView implements SurfaceHolder.Callback
 	protected byte[] mPreviewData;
 	protected int mFrameCount;
 	
-	Bitmap mResultBitmap;
+	public static Bitmap mResultBitmap;
 	
 	
 	public CameraPreview(Context context) {
@@ -179,8 +173,8 @@ public class CameraPreview extends SurfaceView implements SurfaceHolder.Callback
                     }
             	}
             }
-        });
-        
+		});
+		
         // Start preview
         mCamera.startPreview();
 	}
@@ -239,7 +233,6 @@ public class CameraPreview extends SurfaceView implements SurfaceHolder.Callback
 	
 	protected int mThreadCount = 0;
 	protected class ExposingThread implements Runnable {
-		@SuppressLint("SimpleDateFormat")
 		@Override
 		public void run() {
 			long id = Thread.currentThread().getId();
@@ -291,51 +284,11 @@ public class CameraPreview extends SurfaceView implements SurfaceHolder.Callback
 			
 			// Exposing finish
 			mHandler.sendEmptyMessage(MSG_EXPOSING_FINISH);
-
-			// Save the picture
-			try {
-	        	Bundle bundle = new Bundle();
-	        	Message msg = new Message();
-	        	msg.what = MSG_TOAST;
-	        	
-	        	// Create file
-	            File dir = new File(SettingsManager.mPath);
-	            if(!dir.exists())
-	                if(!dir.mkdirs()) {
-	                    bundle.putString("msg", getResources().getString(R.string.failed_to_create_directory));
-	                	msg.setData(bundle);
-	                	mHandler.sendMessage(msg);
-	                    return;
-	                }
-	            File file = new File(SettingsManager.mPath + "/" + new SimpleDateFormat("yyyyMMdd_HHmmss").format(new Date()) + ".jpg");
-	            
-	            // Write file
-	            BufferedOutputStream bos = new BufferedOutputStream(new FileOutputStream(file));
-
-	            if(mResultBitmap.compress(Bitmap.CompressFormat.JPEG, 100, bos))
-	            {
-		            bos.flush();
-		            bundle.putString("msg", getResources().getString(R.string.saved_to) + " " + file.getPath());
-	            }
-	            else
-	            	bundle.putString("msg", getResources().getString(R.string.failed_to_write_file) + file.getPath());
-	        	msg.setData(bundle);
-	        	mHandler.sendMessageDelayed(msg, 2000);
-
-	            bos.close();
-	            
-	            // Restore
-	        	mHandler.sendEmptyMessageDelayed(MSG_RESTORE, 2000);
-	        } catch(Exception e) {
-	            e.printStackTrace();
-	        }
 		}
 	}
 	
 	protected static final int MSG_UPDATE_PREVIEW = 1;
 	protected static final int MSG_EXPOSING_FINISH = 2;
-	protected static final int MSG_RESTORE = 3;
-	protected static final int MSG_TOAST = 4;
 	private long mLastFPSTime;
 	private int mLastFrameCount;
 	private String mFPSString = "";
@@ -360,32 +313,23 @@ public class CameraPreview extends SurfaceView implements SurfaceHolder.Callback
 				break;
 				
 			case MSG_EXPOSING_FINISH:
-				// Preview
-				CameraPreview.this.setVisibility(INVISIBLE);
+				// Preview and save
+		        mActivity.startActivity(new Intent(mActivity, PreviewActivity.class));
+		        
+		        // Restore
 		        mActivity.mOutputText.setVisibility(INVISIBLE);
-		        mFPSString = "";
 		        mActivity.mOutputText.setText("");
-				
-				// Resize
-				resize();
-				break;
-				
-			case MSG_RESTORE:
-				CameraPreview.this.setVisibility(VISIBLE);
+		        mFPSString = "";
 				mActivity.mResultPreview.setVisibility(INVISIBLE);
 				mActivity.mResultPreview.setImageBitmap(null);
 		        mActivity.mButtonSetting.setVisibility(VISIBLE);
 				mActivity.mButtonShutter.setVisibility(VISIBLE);
 				
 				// Release
-				mPreviewData     = null;
-				mResultBitmap.recycle();
-				mResultBitmap    = null;
-				break;
+				mPreviewData = null;
 				
-			case MSG_TOAST:
-				Toast.makeText(getContext(), msg.getData().getString("msg"), 
-	            		Toast.LENGTH_SHORT).show();
+				// Resize
+				resize();
 				break;
 			}
 		}

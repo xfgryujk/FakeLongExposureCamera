@@ -30,9 +30,6 @@ import android.widget.SimpleAdapter;
 import android.widget.TextView;
 
 public class SettingsManager {
-	@SuppressWarnings("unused")
-	private static final String TAG = "SettingsManager";
-	
 	protected static MainActivity mMainActivity;
 	
 	public static int mBlendingMode;

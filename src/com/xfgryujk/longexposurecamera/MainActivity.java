@@ -1,7 +1,6 @@
 package com.xfgryujk.longexposurecamera;
 
 import android.app.Activity;
-import android.content.pm.ActivityInfo;
 import android.os.Bundle;
 import android.view.KeyEvent;
 import android.view.View;
@@ -14,9 +13,6 @@ import android.widget.TextView;
 import android.widget.Toast;
 
 public class MainActivity extends Activity {
-	@SuppressWarnings("unused")
-	private static final String TAG = "MainActivity";
-	
 	public CameraPreview mCameraPreview;
 	public ImageView mResultPreview;
 	public TextView mOutputText;
@@ -28,8 +24,6 @@ public class MainActivity extends Activity {
 	protected void onCreate(Bundle savedInstanceState) {
 		super.onCreate(savedInstanceState);
 		
-		// Landscape
-		setRequestedOrientation(ActivityInfo.SCREEN_ORIENTATION_LANDSCAPE);
 		// No title
 		requestWindowFeature(Window.FEATURE_NO_TITLE);
 		// Full screen, keep screen on
@@ -37,7 +31,7 @@ public class MainActivity extends Activity {
 				WindowManager.LayoutParams.FLAG_FULLSCREEN | WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
 
 		// Initialize UI
-		setContentView(R.layout.activity_main);
+		setContentView(R.layout.main_activity);
 		mCameraPreview = (CameraPreview)findViewById(R.id.camera_preview);
 		mResultPreview = (ImageView)findViewById(R.id.result_preview);
 		mOutputText    = (TextView)findViewById(R.id.output_text);
