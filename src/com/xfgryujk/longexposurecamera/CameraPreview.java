@@ -35,7 +35,7 @@ public class CameraPreview extends SurfaceView implements SurfaceHolder.Callback
 	
 	/** YUV */
 	protected byte[] mPreviewData;
-	protected int mFrameCount;
+	protected volatile int mFrameCount;
 	
 	public static Bitmap mResultBitmap;
 	
@@ -352,7 +352,7 @@ public class CameraPreview extends SurfaceView implements SurfaceHolder.Callback
 		new PictureBlender() {
 			@Override
 			public void blend(int[] previewRGBData, int frameCount) {
-				blendMax1(mResultBitmap, previewRGBData, frameCount);
+				blendMax1(mResultBitmap, previewRGBData);
 			}
 		},
 
@@ -360,7 +360,7 @@ public class CameraPreview extends SurfaceView implements SurfaceHolder.Callback
 		new PictureBlender() {
 			@Override
 			public void blend(int[] previewRGBData, int frameCount) {
-				blendMax2(mResultBitmap, previewRGBData, frameCount);
+				blendMax2(mResultBitmap, previewRGBData);
 			}
 		},
 
@@ -368,7 +368,7 @@ public class CameraPreview extends SurfaceView implements SurfaceHolder.Callback
 		new PictureBlender() {
 			@Override
 			public void blend(int[] previewRGBData, int frameCount) {
-				blendScreen(mResultBitmap, previewRGBData, frameCount);
+				blendScreen(mResultBitmap, previewRGBData);
 			}
 		}
 	};
@@ -382,7 +382,7 @@ public class CameraPreview extends SurfaceView implements SurfaceHolder.Callback
 	protected static final native void blenderInitialize(Bitmap result, int blendingMode);
 	protected static final native void blenderUninitialize();
 	protected static final native void blendAverage(Bitmap resultBitmap, int[] previewRGBData, int frameCount);
-	protected static final native void blendMax1(Bitmap resultBitmap, int[] previewRGBData, int frameCount);
-	protected static final native void blendMax2(Bitmap resultBitmap, int[] previewRGBData, int frameCount);
-	protected static final native void blendScreen(Bitmap resultBitmap, int[] previewRGBData, int frameCount);
+	protected static final native void blendMax1(Bitmap resultBitmap, int[] previewRGBData);
+	protected static final native void blendMax2(Bitmap resultBitmap, int[] previewRGBData);
+	protected static final native void blendScreen(Bitmap resultBitmap, int[] previewRGBData);
 }

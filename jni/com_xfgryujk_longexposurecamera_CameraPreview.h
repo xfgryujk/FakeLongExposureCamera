@@ -161,10 +161,6 @@ extern "C" {
 #define com_xfgryujk_longexposurecamera_CameraPreview_MSG_UPDATE_PREVIEW 1L
 #undef com_xfgryujk_longexposurecamera_CameraPreview_MSG_EXPOSING_FINISH
 #define com_xfgryujk_longexposurecamera_CameraPreview_MSG_EXPOSING_FINISH 2L
-#undef com_xfgryujk_longexposurecamera_CameraPreview_MSG_RESTORE
-#define com_xfgryujk_longexposurecamera_CameraPreview_MSG_RESTORE 3L
-#undef com_xfgryujk_longexposurecamera_CameraPreview_MSG_TOAST
-#define com_xfgryujk_longexposurecamera_CameraPreview_MSG_TOAST 4L
 /*
  * Class:     com_xfgryujk_longexposurecamera_CameraPreview
  * Method:    decodeYUV420SP
@@ -200,26 +196,26 @@ JNIEXPORT void JNICALL Java_com_xfgryujk_longexposurecamera_CameraPreview_blendA
 /*
  * Class:     com_xfgryujk_longexposurecamera_CameraPreview
  * Method:    blendMax1
- * Signature: (Landroid/graphics/Bitmap;[II)V
+ * Signature: (Landroid/graphics/Bitmap;[I)V
  */
 JNIEXPORT void JNICALL Java_com_xfgryujk_longexposurecamera_CameraPreview_blendMax1
-  (JNIEnv *, jclass, jobject, jintArray, jint);
+  (JNIEnv *, jclass, jobject, jintArray);
 
 /*
  * Class:     com_xfgryujk_longexposurecamera_CameraPreview
  * Method:    blendMax2
- * Signature: (Landroid/graphics/Bitmap;[II)V
+ * Signature: (Landroid/graphics/Bitmap;[I)V
  */
 JNIEXPORT void JNICALL Java_com_xfgryujk_longexposurecamera_CameraPreview_blendMax2
-  (JNIEnv *, jclass, jobject, jintArray, jint);
+  (JNIEnv *, jclass, jobject, jintArray);
 
 /*
  * Class:     com_xfgryujk_longexposurecamera_CameraPreview
  * Method:    blendScreen
- * Signature: (Landroid/graphics/Bitmap;[II)V
+ * Signature: (Landroid/graphics/Bitmap;[I)V
  */
 JNIEXPORT void JNICALL Java_com_xfgryujk_longexposurecamera_CameraPreview_blendScreen
-  (JNIEnv *, jclass, jobject, jintArray, jint);
+  (JNIEnv *, jclass, jobject, jintArray);
 
 #ifdef __cplusplus
 }

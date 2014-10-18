@@ -26,6 +26,7 @@ import android.widget.AdapterView.OnItemClickListener;
 import android.widget.EditText;
 import android.widget.ListView;
 import android.widget.SeekBar;
+import android.widget.SeekBar.OnSeekBarChangeListener;
 import android.widget.SimpleAdapter;
 import android.widget.TextView;
 
@@ -162,23 +163,17 @@ public class SettingsManager {
 				break;
 				
 			case 1: // EV
-				final SeekBar seekBar = new SeekBar(mMainActivity);
-				seekBar.setMax(params.getMaxExposureCompensation() - params.getMinExposureCompensation());
-				seekBar.setProgress(mEV - params.getMinExposureCompensation());
-				builder.setTitle(res.getString(R.string.EV))
-				.setView(seekBar)
-				.setPositiveButton(res.getString(R.string.ok), new DialogInterface.OnClickListener() {
+				showSeekBarDialog(res.getString(R.string.EV), params.getMinExposureCompensation(), 
+						params.getMaxExposureCompensation(), mEV, new OnSeekBarDialogPositiveButton() {
 					@Override
-					public void onClick(DialogInterface dialog, int which) {
-						mEV = seekBar.getProgress() + params.getMinExposureCompensation();
+					public void onClick(int progress) {
+						mEV = progress;
 						pref.edit().putInt(res.getString(R.string.pref_EV), mEV).commit();
 						((TextView)view.findViewById(R.id.setting_value)).setText(Integer.toString(mEV));
 						params.setExposureCompensation(mEV);
 						camera.setParameters(params);
 					}
-				})
-				.setNegativeButton(res.getString(R.string.cancel), null)
-				.show();
+				});
 				break;
 				
 			case 2: // White balance
@@ -281,21 +276,15 @@ public class SettingsManager {
 				break;
 				
 			case 5: // Thread count
-				final SeekBar seekBar2 = new SeekBar(mMainActivity);
-				seekBar2.setMax(15);
-				seekBar2.setProgress(mMaxThreadCount - 1);
-				builder.setTitle(res.getString(R.string.thread_count))
-				.setView(seekBar2)
-				.setPositiveButton(res.getString(R.string.ok), new DialogInterface.OnClickListener() {
+				showSeekBarDialog(res.getString(R.string.thread_count), 1, 16, mMaxThreadCount, 
+						new OnSeekBarDialogPositiveButton() {
 					@Override
-					public void onClick(DialogInterface dialog, int which) {
-						mMaxThreadCount = seekBar2.getProgress() + 1;
+					public void onClick(int progress) {
+						mMaxThreadCount = progress;
 						pref.edit().putInt(res.getString(R.string.pref_thread_count), mMaxThreadCount).commit();
 						((TextView)view.findViewById(R.id.setting_value)).setText(Integer.toString(mMaxThreadCount));
 					}
-				})
-				.setNegativeButton(res.getString(R.string.cancel), null)
-				.show();
+				});
 				break;
 				
 			case 6: // Path
@@ -317,4 +306,45 @@ public class SettingsManager {
 			}
 		}
 	};
+	
+	protected interface OnSeekBarDialogPositiveButton {
+		public void onClick(int progress);
+	}
+	@SuppressLint("InflateParams")
+	protected static void showSeekBarDialog(String title, final int min, int max, int initial, 
+			final OnSeekBarDialogPositiveButton onPositiveButton) {
+		Resources res = mMainActivity.getResources();
+		View view = LayoutInflater.from(mMainActivity).inflate(R.layout.seekbar_dialog, null);
+		
+		// Set TextView and SeekBar
+		final TextView progressText = (TextView)view.findViewById(R.id.progress_text);
+		progressText.setText(Integer.toString(initial));
+		
+		final SeekBar seekBar = (SeekBar)view.findViewById(R.id.seekBar);
+		seekBar.setMax(max - min);
+		seekBar.setProgress(initial - min);
+		seekBar.setOnSeekBarChangeListener(new OnSeekBarChangeListener() {
+			@Override
+			public void onProgressChanged(SeekBar thiz, int progress, boolean fromUser) {
+				progressText.setText(Integer.toString(progress + min));
+			}
+			@Override
+			public void onStartTrackingTouch(SeekBar thiz) {}
+			@Override
+			public void onStopTrackingTouch(SeekBar thiz) {}
+		});
+		
+		// Set dialog
+		new AlertDialog.Builder(mMainActivity)
+		.setTitle(title)
+		.setView(view)
+		.setPositiveButton(res.getString(R.string.ok), new DialogInterface.OnClickListener() {
+			@Override
+			public void onClick(DialogInterface dialog, int which) {
+				onPositiveButton.onClick(seekBar.getProgress() + min);
+			}
+		})
+		.setNegativeButton(res.getString(R.string.cancel), null)
+		.show();
+	}
 }

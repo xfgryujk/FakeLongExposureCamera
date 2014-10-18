@@ -130,7 +130,7 @@ JNIEXPORT void JNICALL Java_com_xfgryujk_longexposurecamera_CameraPreview_blendA
 
 // blendMax1
 JNIEXPORT void JNICALL Java_com_xfgryujk_longexposurecamera_CameraPreview_blendMax1
-  (JNIEnv * env, jclass thiz, jobject resultBitmap, jintArray jiaPreviewRGBData, jint frameCount)
+  (JNIEnv * env, jclass thiz, jobject resultBitmap, jintArray jiaPreviewRGBData)
 {
 	// B1 G1 R1 A1 B2 G2 R2 A2 ...
 	BYTE* previewRGBData  = (BYTE*)(*env)->GetIntArrayElements(env, jiaPreviewRGBData, NULL);
@@ -160,7 +160,7 @@ JNIEXPORT void JNICALL Java_com_xfgryujk_longexposurecamera_CameraPreview_blendM
 
 // blendMax2
 JNIEXPORT void JNICALL Java_com_xfgryujk_longexposurecamera_CameraPreview_blendMax2
-  (JNIEnv * env, jclass thiz, jobject resultBitmap, jintArray jiaPreviewRGBData, jint frameCount)
+  (JNIEnv * env, jclass thiz, jobject resultBitmap, jintArray jiaPreviewRGBData)
 {
 	// B1 G1 R1 A1 B2 G2 R2 A2 ...
 	BYTE* previewRGBData  = (BYTE*)(*env)->GetIntArrayElements(env, jiaPreviewRGBData, NULL);
@@ -193,7 +193,7 @@ JNIEXPORT void JNICALL Java_com_xfgryujk_longexposurecamera_CameraPreview_blendM
 
 // blendScreen
 JNIEXPORT void JNICALL Java_com_xfgryujk_longexposurecamera_CameraPreview_blendScreen
-  (JNIEnv * env, jclass thiz, jobject resultBitmap, jintArray jiaPreviewRGBData, jint frameCount)
+  (JNIEnv * env, jclass thiz, jobject resultBitmap, jintArray jiaPreviewRGBData)
 {
 	// B1 G1 R1 A1 B2 G2 R2 A2 ...
 	BYTE* previewRGBData  = (BYTE*)(*env)->GetIntArrayElements(env, jiaPreviewRGBData, NULL);

@@ -42,7 +42,7 @@ public class PreviewActivity extends Activity {
 		setContentView(R.layout.preview_activity);
 		mResultPreview = (ImageView)findViewById(R.id.result_preview);
 		mButtonCancel  = (Button)findViewById(R.id.cancel_button);
-		mButtonSave	= (Button)findViewById(R.id.save_button);
+		mButtonSave	   = (Button)findViewById(R.id.save_button);
 		
 		mButtonCancel.setOnClickListener(new OnClickListener() { 
 			@Override
