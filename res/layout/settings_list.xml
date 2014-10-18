@@ -6,23 +6,25 @@
 
     <TextView
         android:id="@+id/setting_name"
+    	android:layout_marginLeft="5dp"
         android:layout_width="wrap_content"
         android:layout_height="35dp"
         android:layout_alignParentLeft="true"
         android:layout_alignParentTop="true"
+        android:gravity="center_vertical"
         android:text="Name"
-        android:textAppearance="?android:attr/textAppearanceMedium"
-        android:gravity="center_vertical" />
+        android:textSize="18sp" />
 
     <TextView
         android:id="@+id/setting_value"
+    	android:layout_marginRight="5dp"
         android:layout_width="150dp"
         android:layout_height="35dp"
         android:layout_alignParentRight="true"
         android:layout_alignParentTop="true"
+        android:gravity="right|center_vertical"
         android:text="Value"
-        android:textAppearance="?android:attr/textAppearanceMedium"
         android:textColor="#33CCFF"
-        android:gravity="right|center_vertical" />
+        android:textSize="18sp" />
 
 </RelativeLayout>

@@ -4,6 +4,7 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 
+import android.annotation.SuppressLint;
 import android.app.AlertDialog;
 import android.app.Dialog;
 import android.content.DialogInterface;
@@ -15,10 +16,11 @@ import android.hardware.Camera.Size;
 import android.os.Environment;
 import android.preference.PreferenceManager;
 import android.view.Gravity;
+import android.view.LayoutInflater;
 import android.view.View;
 import android.view.View.OnClickListener;
 import android.view.Window;
-import android.view.WindowManager;
+import android.view.WindowManager.LayoutParams;
 import android.widget.AdapterView;
 import android.widget.AdapterView.OnItemClickListener;
 import android.widget.EditText;
@@ -54,17 +56,30 @@ public class SettingsManager {
         mWhiteBalance   = pref.getString(res.getString(R.string.pref_white_balance), "auto");
         mResolution     = pref.getInt(res.getString(R.string.pref_resolution), 0);
         mISO            = pref.getString(res.getString(R.string.pref_ISO), "auto");
-        mMaxThreadCount = pref.getInt(res.getString(R.string.pref_thread_count), Math.max(16, Runtime.getRuntime().availableProcessors() * 2));
+        mMaxThreadCount = pref.getInt(res.getString(R.string.pref_thread_count), Math.min(16, Runtime.getRuntime().availableProcessors() * 2));
         mPath           = pref.getString(res.getString(R.string.pref_path), Environment.getExternalStorageDirectory().getPath() + "/FakeLongExposureCamera");
 	}
 
 	/** Show settings dialog */
 	public static final OnClickListener mOnButtonSettingClick = new OnClickListener() { 
+		@SuppressLint("InflateParams")
 		@Override
-		public void onClick(View buttonView) { 
-			AlertDialog.Builder builder = new AlertDialog.Builder(mMainActivity);
-			ListView view = new ListView(mMainActivity);
-			view.setOnItemClickListener(mOnDialogItemClick);
+		public void onClick(View buttonView) {
+			// Set dialog
+			Dialog dialog = new Dialog(mMainActivity, R.style.settingsDialog);
+			Window dialogWindow = dialog.getWindow();
+			dialogWindow.setGravity(Gravity.LEFT | Gravity.TOP);
+	        LayoutParams lp = dialogWindow.getAttributes();
+	        lp.x = 30;
+	        lp.y = 20;
+	        dialogWindow.setAttributes(lp);
+	        dialog.setCanceledOnTouchOutside(true);
+			View view = LayoutInflater.from(mMainActivity).inflate(R.layout.settings_dialog, null);
+			dialog.setContentView(view);
+
+			// Set list
+			ListView listView = (ListView)view.findViewById(R.id.settings_list);
+			listView.setOnItemClickListener(mOnDialogItemClick);
 			
 			// Set items
 			List<HashMap<String, String>> data = new ArrayList<HashMap<String, String>>();
@@ -117,22 +132,10 @@ public class SettingsManager {
 					new String[] {"name", "value"}, 
 					new int[] {R.id.setting_name, R.id.setting_value}
 			);
-			view.setAdapter(adapter);
+			listView.setAdapter(adapter);
 			
-			// Set dialog
-			Dialog dialog = builder.setView(view).create();
-	        dialog.setCanceledOnTouchOutside(true);
-	        
-			Window dialogWindow = dialog.getWindow();
-	        dialogWindow.clearFlags(WindowManager.LayoutParams.FLAG_DIM_BEHIND);
-	        WindowManager.LayoutParams lp = dialogWindow.getAttributes();
-	        dialogWindow.setGravity(Gravity.LEFT | Gravity.TOP);
-	        lp.x     = 30;
-	        lp.y     = 20;
-	        lp.alpha = 0.3f;
-	        dialogWindow.setAttributes(lp);
+			
 	        dialog.show();
-	        dialogWindow.setLayout(450, WindowManager.LayoutParams.WRAP_CONTENT);
 		}
 	};
 	
