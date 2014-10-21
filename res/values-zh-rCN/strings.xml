@@ -20,6 +20,13 @@
     <string name="white_balance">白平衡</string>
     <string name="resolution">分辨率</string>
     <string name="ISO">感光度</string>
+    <string name="auto_stop">自动停止</string>
+    <string-array name="auto_stop_types">
+        <item >不自动停止</item>
+        <item >帧</item>
+        <item >秒</item>
+    </string-array>
+    <string name="time">时间</string>
     <string name="thread_count">线程数</string>
     <string name="path">保存路径</string>
     

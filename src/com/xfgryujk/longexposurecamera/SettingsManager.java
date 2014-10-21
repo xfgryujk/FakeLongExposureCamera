@@ -15,6 +15,7 @@ import android.hardware.Camera.Parameters;
 import android.hardware.Camera.Size;
 import android.os.Environment;
 import android.preference.PreferenceManager;
+import android.text.InputType;
 import android.util.DisplayMetrics;
 import android.view.Gravity;
 import android.view.LayoutInflater;
@@ -39,6 +40,10 @@ public class SettingsManager {
 	public static String mWhiteBalance;
 	public static int mResolution;
 	public static String mISO;
+	/** 0 No auto stop, 1 frame, 2 second */
+	public static int mAutoStop;
+	public static int mAutoStopTime;
+	public static int mAutoStopTimeMS;
 	public static int mMaxThreadCount;
 	public static String mPath;
 	
@@ -55,6 +60,10 @@ public class SettingsManager {
         mWhiteBalance   = pref.getString(res.getString(R.string.pref_white_balance), "auto");
         mResolution     = pref.getInt(res.getString(R.string.pref_resolution), 0);
         mISO            = pref.getString(res.getString(R.string.pref_ISO), "auto");
+        mAutoStop       = pref.getInt(res.getString(R.string.pref_auto_stop), 0);
+        mAutoStopTime   = pref.getInt(res.getString(R.string.pref_auto_stop_time), 0);
+        if(mAutoStop == 2)
+        	mAutoStopTimeMS = mAutoStopTime * 1000;
         mMaxThreadCount = pref.getInt(res.getString(R.string.pref_thread_count), Math.min(16, Runtime.getRuntime().availableProcessors() * 2));
         mPath           = pref.getString(res.getString(R.string.pref_path), Environment.getExternalStorageDirectory().getPath() + "/FakeLongExposureCamera");
 	}
@@ -107,6 +116,14 @@ public class SettingsManager {
 			data.add(item);
 			
 			item = new HashMap<String, String>();
+			item.put("name", res.getString(R.string.auto_stop));
+			if(mAutoStop == 0)
+				item.put("value", res.getStringArray(R.array.auto_stop_types)[0]);
+			else
+				item.put("value", Integer.toString(mAutoStopTime) + " " + res.getStringArray(R.array.auto_stop_types)[mAutoStop]);
+			data.add(item);
+			
+			item = new HashMap<String, String>();
 			item.put("name", res.getString(R.string.thread_count));
 			item.put("value", Integer.toString(mMaxThreadCount));
 			data.add(item);
@@ -148,7 +165,8 @@ public class SettingsManager {
 	        final SharedPreferences pref = PreferenceManager.getDefaultSharedPreferences(mMainActivity);
 			final Camera camera = mMainActivity.mCameraPreview.getCamera();
 			final Parameters params = camera.getParameters();
-			AlertDialog.Builder builder = new AlertDialog.Builder(mMainActivity);
+			final AlertDialog.Builder builder = new AlertDialog.Builder(mMainActivity);
+			
 			switch(position)
 			{
 			case 0: // Blending mode
@@ -279,7 +297,54 @@ public class SettingsManager {
 				.show();
 				break;
 				
-			case 5: // Thread count
+			case 5: // Auto stop
+				final String[] types = res.getStringArray(R.array.auto_stop_types);
+				// Unit dialog
+				new AlertDialog.Builder(mMainActivity)
+				.setTitle(res.getString(R.string.auto_stop))
+				.setItems(types, new DialogInterface.OnClickListener() {
+					@Override
+					public void onClick(DialogInterface dialog, final int autoStop) {
+						if(autoStop == 0) // No auto stop
+						{
+							mAutoStop = 0;
+							pref.edit().putInt(res.getString(R.string.pref_auto_stop), mAutoStop).commit();
+							((TextView)view.findViewById(R.id.setting_value)).setText(types[0]);
+							return;
+						}
+						
+						final EditText edit2 = new EditText(mMainActivity);
+						edit2.setText(Integer.toString(mAutoStopTime));
+						edit2.setInputType(InputType.TYPE_CLASS_NUMBER);
+						// Time dialog
+						builder.setTitle(res.getString(R.string.time))
+						.setView(edit2)
+						.setPositiveButton(res.getString(R.string.ok), new DialogInterface.OnClickListener() {
+							@Override
+							public void onClick(DialogInterface dialog, int which) {
+								if(edit2.getText().length() > 6)
+									return;
+								int time = Integer.parseInt(edit2.getText().toString());
+								if(time <= 0)
+									return;
+								mAutoStop = autoStop;
+								pref.edit().putInt(res.getString(R.string.pref_auto_stop), mAutoStop).commit();
+								mAutoStopTime   = time;
+								mAutoStopTimeMS = mAutoStopTime * 1000;
+								pref.edit().putInt(res.getString(R.string.pref_auto_stop_time), mAutoStopTime).commit();
+								((TextView)view.findViewById(R.id.setting_value))
+									.setText(Integer.toString(mAutoStopTime) + " " + types[mAutoStop]);
+							}
+						})
+						.setNegativeButton(res.getString(R.string.cancel), null)
+						.show();
+					}
+				})
+				.create()
+				.show();
+				break;
+				
+			case 6: // Thread count
 				showSeekBarDialog(res.getString(R.string.thread_count), 1, 16, mMaxThreadCount, 
 						new OnSeekBarDialogPositiveButton() {
 					@Override
@@ -291,7 +356,7 @@ public class SettingsManager {
 				});
 				break;
 				
-			case 6: // Path
+			case 7: // Path
 				final EditText edit = new EditText(mMainActivity);
 				edit.setText(mPath);
 				builder.setTitle(res.getString(R.string.path))

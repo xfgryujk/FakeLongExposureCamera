@@ -33,6 +33,7 @@ public class CameraPreview extends SurfaceView implements SurfaceHolder.Callback
 	protected int mPictureWidth, mPictureHeight;
 	
 	protected volatile boolean mIsExposing = false;
+	protected long mStartTime;
 	
 	/** YUV */
 	protected byte[] mPreviewData;
@@ -233,6 +234,7 @@ public class CameraPreview extends SurfaceView implements SurfaceHolder.Callback
 			
 			// Start exposing threads
 			mIsExposing     = true;
+			mStartTime      = System.currentTimeMillis();
 			for(int i = 0; i < SettingsManager.mMaxThreadCount; i++)
 				(new Thread(new ExposingThread())).start();
 			
@@ -275,6 +277,20 @@ public class CameraPreview extends SurfaceView implements SurfaceHolder.Callback
 		            
 		            frameCount = ++mFrameCount;
 		            previewData  = mPreviewData;
+		            
+		            // Auto stop
+		            switch(SettingsManager.mAutoStop)
+		            {
+		            case 1: // frame
+		            	if(frameCount >= SettingsManager.mAutoStopTime)
+		            		mHandler.sendEmptyMessage(MSG_STOP_EXPOSING);
+		            	break;
+		            	
+		            case 2: // second
+		            	if(System.currentTimeMillis() - mStartTime >= SettingsManager.mAutoStopTimeMS)
+		            		mHandler.sendEmptyMessage(MSG_STOP_EXPOSING);
+		            	break;
+		            }
 		        }
 				//Log.i(TAG, id + " is decoding");
 		        decodeYUV420SP(previewRGBData, previewData, mPictureWidth, mPictureHeight);
@@ -303,6 +319,7 @@ public class CameraPreview extends SurfaceView implements SurfaceHolder.Callback
 	
 	protected static final int MSG_UPDATE_PREVIEW = 1;
 	protected static final int MSG_EXPOSING_FINISH = 2;
+	protected static final int MSG_STOP_EXPOSING = 3;
 	private long mLastFPSTime;
 	private int mLastFrameCount;
 	private String mFPSString = "";
@@ -320,7 +337,10 @@ public class CameraPreview extends SurfaceView implements SurfaceHolder.Callback
 					mLastFPSTime    = time;
 					mLastFrameCount = mFrameCount;
 				}
-				mActivity.mOutputText.setText(Integer.toString(mFrameCount) + mFPSString);
+				mActivity.mOutputText.setText(String.format("%.3fs  %d%s", 
+						(System.currentTimeMillis() - mStartTime) / 1000.0f, 
+						mFrameCount, 
+						mFPSString));
 				synchronized (mResultBitmap) {
 					mActivity.mResultPreview.invalidate();
 				}
@@ -344,6 +364,10 @@ public class CameraPreview extends SurfaceView implements SurfaceHolder.Callback
 				
 				// Resize
 				resize();
+				break;
+				
+			case MSG_STOP_EXPOSING:
+				onShutterClick();
 				break;
 			}
 		}

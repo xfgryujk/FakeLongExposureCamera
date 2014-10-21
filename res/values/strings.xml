@@ -20,6 +20,13 @@
     <string name="white_balance">White balance</string>
     <string name="resolution">Resolution</string>
     <string name="ISO">ISO</string>
+    <string name="auto_stop">Auto stop</string>
+    <string-array name="auto_stop_types">
+        <item >No auto stop</item>
+        <item >frames</item>
+        <item >seconds</item>
+    </string-array>
+    <string name="time">Time</string>
     <string name="thread_count">Thread count</string>
     <string name="path">Path</string>
     
