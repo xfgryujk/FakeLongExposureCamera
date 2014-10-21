@@ -11,6 +11,7 @@ import android.content.Intent;
 import android.graphics.Bitmap;
 import android.graphics.Bitmap.Config;
 import android.hardware.Camera;
+import android.hardware.Camera.AutoFocusCallback;
 import android.hardware.Camera.PreviewCallback;
 import android.os.Handler;
 import android.os.Message;
@@ -186,6 +187,8 @@ public class CameraPreview extends SurfaceView implements SurfaceHolder.Callback
 			mCamera.setPreviewCallback(null);
 			mCamera.release();
 			mCamera = null;
+			mActivity.mFocusResult.setVisibility(INVISIBLE);
+			mActivity.mFocusResult.setImageBitmap(null);
 		}
 	}
 	
@@ -193,7 +196,16 @@ public class CameraPreview extends SurfaceView implements SurfaceHolder.Callback
 	@Override
 	public void onClick(View view) { 
 		if(!mIsExposing)
-			mCamera.autoFocus(null);
+		{
+			mCamera.autoFocus(new AutoFocusCallback() {
+				@Override
+				public void onAutoFocus(boolean successful, Camera camera) {
+					mActivity.mFocusResult.setImageResource(successful ? R.drawable.focus_succeeded : R.drawable.focus_failed);
+					mActivity.mFocusResult.setVisibility(VISIBLE);
+				}
+			});
+			mActivity.mFocusResult.setVisibility(INVISIBLE);
+		}
 	}
 	
 	/** Start or stop exposing */
@@ -227,6 +239,8 @@ public class CameraPreview extends SurfaceView implements SurfaceHolder.Callback
 			mActivity.mResultPreview.setVisibility(VISIBLE);
 			mActivity.mOutputText.setVisibility(VISIBLE);
 			mActivity.mButtonSetting.setVisibility(INVISIBLE);
+			mActivity.mFocusResult.setVisibility(INVISIBLE);
+			mActivity.mFocusResult.setImageBitmap(null);
 			resize(120, 120, 200, 200);
 		}
 	}

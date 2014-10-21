@@ -15,6 +15,7 @@ import android.widget.Toast;
 public class MainActivity extends Activity {
 	public CameraPreview mCameraPreview;
 	public ImageView mResultPreview;
+	public ImageView mFocusResult;
 	public TextView mOutputText;
 	public Button mButtonShutter;
 	public Button mButtonSetting;
@@ -34,6 +35,7 @@ public class MainActivity extends Activity {
 		setContentView(R.layout.main_activity);
 		mCameraPreview = (CameraPreview)findViewById(R.id.camera_preview);
 		mResultPreview = (ImageView)findViewById(R.id.result_preview);
+		mFocusResult   = (ImageView)findViewById(R.id.focus_result);
 		mOutputText    = (TextView)findViewById(R.id.output_text);
 		mButtonShutter = (Button)findViewById(R.id.shutter_button);
 		mButtonSetting = (Button)findViewById(R.id.setting_button);

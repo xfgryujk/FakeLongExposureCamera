@@ -15,6 +15,7 @@ import android.hardware.Camera.Parameters;
 import android.hardware.Camera.Size;
 import android.os.Environment;
 import android.preference.PreferenceManager;
+import android.util.DisplayMetrics;
 import android.view.Gravity;
 import android.view.LayoutInflater;
 import android.view.View;
@@ -63,17 +64,7 @@ public class SettingsManager {
 		@SuppressLint("InflateParams")
 		@Override
 		public void onClick(View buttonView) {
-			// Set dialog
-			Dialog dialog = new Dialog(mMainActivity, R.style.settingsDialog);
-			Window dialogWindow = dialog.getWindow();
-			dialogWindow.setGravity(Gravity.LEFT | Gravity.TOP);
-	        LayoutParams lp = dialogWindow.getAttributes();
-	        lp.x = 30;
-	        lp.y = 20;
-	        dialogWindow.setAttributes(lp);
-	        dialog.setCanceledOnTouchOutside(true);
 			View view = LayoutInflater.from(mMainActivity).inflate(R.layout.settings_dialog, null);
-			dialog.setContentView(view);
 
 			// Set list
 			ListView listView = (ListView)view.findViewById(R.id.settings_list);
@@ -132,8 +123,21 @@ public class SettingsManager {
 			);
 			listView.setAdapter(adapter);
 			
-			
+			// Set dialog
+			Dialog dialog = new Dialog(mMainActivity, R.style.settingsDialog);
+			dialog.setContentView(view);
+			Window dialogWindow = dialog.getWindow();
+			//dialogWindow.setGravity(Gravity.LEFT | Gravity.TOP);
+			DisplayMetrics dm = new DisplayMetrics();
+			mMainActivity.getWindowManager().getDefaultDisplay().getMetrics(dm);
+	        LayoutParams lp = dialogWindow.getAttributes();
+	        lp.gravity = Gravity.LEFT | Gravity.TOP;
+	        lp.x       = 30;
+	        lp.y       = 20;
+	        lp.height  = dm.heightPixels - 40;
+	        dialog.setCanceledOnTouchOutside(true);
 	        dialog.show();
+	        dialogWindow.setAttributes(lp);
 		}
 	};
 	
