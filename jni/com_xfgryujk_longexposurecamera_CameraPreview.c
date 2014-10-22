@@ -214,3 +214,56 @@ JNIEXPORT void JNICALL Java_com_xfgryujk_longexposurecamera_CameraPreview_blendS
 	
 	(*env)->ReleaseIntArrayElements(env, jiaPreviewRGBData, (jint*)previewRGBData, JNI_ABORT);
 }
+
+// blendTranslucence
+JNIEXPORT void JNICALL Java_com_xfgryujk_longexposurecamera_CameraPreview_blendTranslucence
+  (JNIEnv * env, jclass thiz, jobject resultBitmap, jintArray jiaPreviewRGBData, jint alpha)
+{
+	int alpha2 = 255 - alpha;
+	// B1 G1 R1 A1 B2 G2 R2 A2 ...
+	BYTE* previewRGBData  = (BYTE*)(*env)->GetIntArrayElements(env, jiaPreviewRGBData, NULL);
+	BYTE* pPreviewRGBData = previewRGBData;
+	
+	// R1 G1 B1 A1 R2 G2 B2 A2 ...
+	BYTE* data;
+	AndroidBitmap_lockPixels(env, resultBitmap, (void**)&data);
+	int i, j;
+	for(i = 0; i < height; i++, data += stride)
+		for(j = 0; j < width; j++, pPreviewRGBData += 4)
+		{
+			data[j * 4]     = (*(pPreviewRGBData + 2) * alpha + data[j * 4]     * alpha2) / 255;
+			data[j * 4 + 1] = (*(pPreviewRGBData + 1) * alpha + data[j * 4 + 1] * alpha2) / 255;
+			data[j * 4 + 2] = (*pPreviewRGBData       * alpha + data[j * 4 + 2] * alpha2) / 255;
+		}
+	AndroidBitmap_unlockPixels(env, resultBitmap);
+	
+	(*env)->ReleaseIntArrayElements(env, jiaPreviewRGBData, (jint*)previewRGBData, JNI_ABORT);
+}
+
+// blendScreenTranslucence
+JNIEXPORT void JNICALL Java_com_xfgryujk_longexposurecamera_CameraPreview_blendScreenTranslucence
+  (JNIEnv * env, jclass thiz, jobject resultBitmap, jintArray jiaPreviewRGBData, jint alpha)
+{
+	int alpha2 = 255 - alpha;
+	// B1 G1 R1 A1 B2 G2 R2 A2 ...
+	BYTE* previewRGBData  = (BYTE*)(*env)->GetIntArrayElements(env, jiaPreviewRGBData, NULL);
+	BYTE* pPreviewRGBData = previewRGBData;
+	
+	// R1 G1 B1 A1 R2 G2 B2 A2 ...
+	BYTE* data;
+	AndroidBitmap_lockPixels(env, resultBitmap, (void**)&data);
+	int i, j, t;
+	for(i = 0; i < height; i++, data += stride)
+		for(j = 0; j < width; j++, pPreviewRGBData += 4)
+		{
+			t = 255 - (255 - data[j * 4])     * (255 - *(pPreviewRGBData + 2)) / 255;
+			data[j * 4]     = (t * alpha + data[j * 4]     * alpha2) / 255;
+			t = 255 - (255 - data[j * 4 + 1]) * (255 - *(pPreviewRGBData + 1)) / 255;
+			data[j * 4 + 1] = (t * alpha + data[j * 4 + 1] * alpha2) / 255;
+			t = 255 - (255 - data[j * 4 + 2]) * (255 - *pPreviewRGBData      ) / 255;
+			data[j * 4 + 2] = (t * alpha + data[j * 4 + 2] * alpha2) / 255;
+		}
+	AndroidBitmap_unlockPixels(env, resultBitmap);
+	
+	(*env)->ReleaseIntArrayElements(env, jiaPreviewRGBData, (jint*)previewRGBData, JNI_ABORT);
+}

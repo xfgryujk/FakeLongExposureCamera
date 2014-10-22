@@ -408,6 +408,25 @@ public class CameraPreview extends SurfaceView implements SurfaceHolder.Callback
 			public void blend(int[] previewRGBData, int frameCount) {
 				blendScreen(mResultBitmap, previewRGBData);
 			}
+		},
+
+		// Translucence
+		new PictureBlender() {
+			@Override
+			public void blend(int[] previewRGBData, int frameCount) {
+				if(frameCount > 1)
+					blendTranslucence(mResultBitmap, previewRGBData, SettingsManager.mAlpha);
+				else
+					mResultBitmap.setPixels(previewRGBData, 0, mPictureWidth, 0, 0, mPictureWidth, mPictureHeight);
+			}
+		},
+
+		// Screen + Translucence
+		new PictureBlender() {
+			@Override
+			public void blend(int[] previewRGBData, int frameCount) {
+				blendScreenTranslucence(mResultBitmap, previewRGBData, SettingsManager.mAlpha);
+			}
 		}
 	};
 
@@ -423,4 +442,6 @@ public class CameraPreview extends SurfaceView implements SurfaceHolder.Callback
 	protected static final native void blendMax1(Bitmap resultBitmap, int[] previewRGBData);
 	protected static final native void blendMax2(Bitmap resultBitmap, int[] previewRGBData);
 	protected static final native void blendScreen(Bitmap resultBitmap, int[] previewRGBData);
+	protected static final native void blendTranslucence(Bitmap resultBitmap, int[] previewRGBData, int alpha);
+	protected static final native void blendScreenTranslucence(Bitmap resultBitmap, int[] previewRGBData, int alpha);
 }

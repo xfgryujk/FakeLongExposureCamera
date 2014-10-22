@@ -161,6 +161,8 @@ extern "C" {
 #define com_xfgryujk_longexposurecamera_CameraPreview_MSG_UPDATE_PREVIEW 1L
 #undef com_xfgryujk_longexposurecamera_CameraPreview_MSG_EXPOSING_FINISH
 #define com_xfgryujk_longexposurecamera_CameraPreview_MSG_EXPOSING_FINISH 2L
+#undef com_xfgryujk_longexposurecamera_CameraPreview_MSG_STOP_EXPOSING
+#define com_xfgryujk_longexposurecamera_CameraPreview_MSG_STOP_EXPOSING 3L
 /*
  * Class:     com_xfgryujk_longexposurecamera_CameraPreview
  * Method:    decodeYUV420SP
@@ -216,6 +218,22 @@ JNIEXPORT void JNICALL Java_com_xfgryujk_longexposurecamera_CameraPreview_blendM
  */
 JNIEXPORT void JNICALL Java_com_xfgryujk_longexposurecamera_CameraPreview_blendScreen
   (JNIEnv *, jclass, jobject, jintArray);
+
+/*
+ * Class:     com_xfgryujk_longexposurecamera_CameraPreview
+ * Method:    blendTranslucence
+ * Signature: (Landroid/graphics/Bitmap;[II)V
+ */
+JNIEXPORT void JNICALL Java_com_xfgryujk_longexposurecamera_CameraPreview_blendTranslucence
+  (JNIEnv *, jclass, jobject, jintArray, jint);
+
+/*
+ * Class:     com_xfgryujk_longexposurecamera_CameraPreview
+ * Method:    blendScreenTranslucence
+ * Signature: (Landroid/graphics/Bitmap;[II)V
+ */
+JNIEXPORT void JNICALL Java_com_xfgryujk_longexposurecamera_CameraPreview_blendScreenTranslucence
+  (JNIEnv *, jclass, jobject, jintArray, jint);
 
 #ifdef __cplusplus
 }

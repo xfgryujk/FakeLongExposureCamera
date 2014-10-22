@@ -15,7 +15,10 @@
         <item >Max1</item>
         <item >Max2</item>
         <item >Screen</item>
+        <item >Translucence</item>
+        <item >Screen + Translucence</item>
     </string-array>
+    <string name="opacity">Opacity</string>
     <string name="EV">EV</string>
     <string name="white_balance">White balance</string>
     <string name="resolution">Resolution</string>

@@ -15,7 +15,10 @@
         <item >最大值1</item>
         <item >最大值2</item>
         <item >滤色</item>
+        <item >半透明</item>
+        <item >滤色+半透明</item>
     </string-array>
+    <string name="opacity">不透明度</string>
     <string name="EV">曝光度</string>
     <string name="white_balance">白平衡</string>
     <string name="resolution">分辨率</string>

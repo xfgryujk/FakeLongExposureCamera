@@ -36,6 +36,7 @@ public class SettingsManager {
 	protected static MainActivity mMainActivity;
 	
 	public static int mBlendingMode;
+	public static int mAlpha;
 	public static int mEV;
 	public static String mWhiteBalance;
 	public static int mResolution;
@@ -56,6 +57,7 @@ public class SettingsManager {
         Resources res = mMainActivity.getResources();
         SharedPreferences pref = PreferenceManager.getDefaultSharedPreferences(mMainActivity);
         mBlendingMode   = pref.getInt(res.getString(R.string.pref_blending_mode), 0);
+        mAlpha          = pref.getInt(res.getString(R.string.pref_alpha), 20);
         mEV             = pref.getInt(res.getString(R.string.pref_EV), 0);
         mWhiteBalance   = pref.getString(res.getString(R.string.pref_white_balance), "auto");
         mResolution     = pref.getInt(res.getString(R.string.pref_resolution), 0);
@@ -144,7 +146,6 @@ public class SettingsManager {
 			Dialog dialog = new Dialog(mMainActivity, R.style.settingsDialog);
 			dialog.setContentView(view);
 			Window dialogWindow = dialog.getWindow();
-			//dialogWindow.setGravity(Gravity.LEFT | Gravity.TOP);
 			DisplayMetrics dm = new DisplayMetrics();
 			mMainActivity.getWindowManager().getDefaultDisplay().getMetrics(dm);
 	        LayoutParams lp = dialogWindow.getAttributes();
@@ -174,10 +175,25 @@ public class SettingsManager {
 				builder.setTitle(res.getString(R.string.blending_mode))
 				.setItems(blendingModes, new DialogInterface.OnClickListener() {
 					@Override
-					public void onClick(DialogInterface dialog, int which) {
-						mBlendingMode = which;
-						pref.edit().putInt(res.getString(R.string.pref_blending_mode), mBlendingMode).commit();
-						((TextView)view.findViewById(R.id.setting_value)).setText(blendingModes[which]);
+					public void onClick(DialogInterface dialog, final int which) {
+						if(which < 4)
+						{
+							mBlendingMode = which;
+							pref.edit().putInt(res.getString(R.string.pref_blending_mode), mBlendingMode).commit();
+							((TextView)view.findViewById(R.id.setting_value)).setText(blendingModes[which]);
+						}
+						else // Set alpha
+							showSeekBarDialog(res.getString(R.string.opacity), 1, 254, mAlpha, 
+									new OnSeekBarDialogPositiveButton() {
+								@Override
+								public void onClick(int progress) {
+									mBlendingMode = which;
+									pref.edit().putInt(res.getString(R.string.pref_blending_mode), mBlendingMode).commit();
+									((TextView)view.findViewById(R.id.setting_value)).setText(blendingModes[which]);
+									mAlpha = progress;
+									pref.edit().putInt(res.getString(R.string.pref_alpha), mAlpha).commit();
+								}
+							});
 					}
 				})
 				.create()
@@ -359,6 +375,7 @@ public class SettingsManager {
 			case 7: // Path
 				final EditText edit = new EditText(mMainActivity);
 				edit.setText(mPath);
+				edit.setSingleLine();
 				builder.setTitle(res.getString(R.string.path))
 				.setView(edit)
 				.setPositiveButton(res.getString(R.string.ok), new DialogInterface.OnClickListener() {
