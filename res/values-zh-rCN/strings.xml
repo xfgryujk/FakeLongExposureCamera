@@ -30,6 +30,7 @@
         <item >秒</item>
     </string-array>
     <string name="time">时间</string>
+    <string name="min_delay_per_frame">每帧最小延时</string>
     <string name="thread_count">线程数</string>
     <string name="path">保存路径</string>
     

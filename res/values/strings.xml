@@ -30,6 +30,7 @@
         <item >seconds</item>
     </string-array>
     <string name="time">Time</string>
+    <string name="min_delay_per_frame">Min delay per frame</string>
     <string name="thread_count">Thread count</string>
     <string name="path">Path</string>
     

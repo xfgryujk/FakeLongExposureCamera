@@ -235,6 +235,7 @@ public class CameraPreview extends SurfaceView implements SurfaceHolder.Callback
 			// Start exposing threads
 			mIsExposing     = true;
 			mStartTime      = System.currentTimeMillis();
+			//mLastFrameTime  = 0;
 			for(int i = 0; i < SettingsManager.mMaxThreadCount; i++)
 				(new Thread(new ExposingThread())).start();
 			
@@ -248,6 +249,7 @@ public class CameraPreview extends SurfaceView implements SurfaceHolder.Callback
 	}
 	
 	protected int mThreadCount = 0;
+	//protected long mLastFrameTime;
 	protected class ExposingThread implements Runnable {
 		@Override
 		public void run() {
@@ -267,16 +269,29 @@ public class CameraPreview extends SurfaceView implements SurfaceHolder.Callback
 		        // Get preview data in RGB
 				synchronized (CameraPreview.this) {
 					//Log.i(TAG, id + " is getting preview data");
+		            
+		            // Delay
+		            /*int n = (int)Math.ceil((mLastFrameTime - System.currentTimeMillis() + SettingsManager.mMinDelayMS) / 200);
+		            Log.i(TAG, "n = " + n);
+		            for(int i = 0; i < n && mIsExposing; i++)
+		            	try {
+							//Thread.sleep(200);
+		            		CameraPreview.this.wait(200);
+						} catch (InterruptedException e) {
+							e.printStackTrace();
+						}
+		            mLastFrameTime = System.currentTimeMillis();*/
+		            
 		            try {
 		            	CameraPreview.this.wait();
 		            } catch(InterruptedException e) {
 		                e.printStackTrace();
 		            }
-		            if(!mIsExposing && mFrameCount > 0)
+		            if(!mIsExposing && mFrameCount > 0) // 1 frame at least
 		            	break;
 		            
-		            frameCount = ++mFrameCount;
-		            previewData  = mPreviewData;
+		            frameCount  = ++mFrameCount;
+		            previewData = mPreviewData;
 		            
 		            // Auto stop
 		            switch(SettingsManager.mAutoStop)
