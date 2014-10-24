@@ -44,9 +44,9 @@ public class SettingsManager {
 	/** 0 No auto stop, 1 frame, 2 second */
 	public static int mAutoStop;
 	public static int mAutoStopTime;
-	public static int mAutoStopTimeMS;
-	//public static int mMinDelay;
-	//public static int mMinDelayMS;
+	public static long mAutoStopTimeMS;
+	public static int mMinDelay;
+	public static long mMinDelayMS;
 	public static int mMaxThreadCount;
 	public static String mPath;
 	
@@ -68,8 +68,8 @@ public class SettingsManager {
         mAutoStopTime   = pref.getInt(res.getString(R.string.pref_auto_stop_time), 0);
         if(mAutoStop == 2)
         	mAutoStopTimeMS = mAutoStopTime * 1000;
-        //mMinDelay       = pref.getInt(res.getString(R.string.pref_min_delay), 0);
-        //mMinDelayMS     = mMinDelay * 1000;
+        mMinDelay       = pref.getInt(res.getString(R.string.pref_min_delay), 0);
+        mMinDelayMS     = mMinDelay * 1000;
         mMaxThreadCount = pref.getInt(res.getString(R.string.pref_thread_count), Math.min(16, Runtime.getRuntime().availableProcessors() * 2));
         mPath           = pref.getString(res.getString(R.string.pref_path), Environment.getExternalStorageDirectory().getPath() + "/FakeLongExposureCamera");
 	}
@@ -129,10 +129,10 @@ public class SettingsManager {
 				item.put("value", Integer.toString(mAutoStopTime) + " " + res.getStringArray(R.array.auto_stop_types)[mAutoStop]);
 			data.add(item);
 			
-			/*item = new HashMap<String, String>();
+			item = new HashMap<String, String>();
 			item.put("name", res.getString(R.string.min_delay_per_frame));
 			item.put("value", Integer.toString(mMinDelay) + " s");
-			data.add(item);*/
+			data.add(item);
 			
 			item = new HashMap<String, String>();
 			item.put("name", res.getString(R.string.thread_count));
@@ -347,10 +347,13 @@ public class SettingsManager {
 						.setPositiveButton(res.getString(R.string.ok), new DialogInterface.OnClickListener() {
 							@Override
 							public void onClick(DialogInterface dialog, int which) {
-								if(edit2.getText().length() > 6)
+								int time;
+								try {
+									time = Integer.parseInt(edit2.getText().toString());
+								} catch (NumberFormatException e) {
 									return;
-								int time = Integer.parseInt(edit2.getText().toString());
-								if(time <= 0)
+								}
+								if(time > 1000000 || time < 1)
 									return;
 								mAutoStop = autoStop;
 								pref.edit().putInt(res.getString(R.string.pref_auto_stop), mAutoStop).commit();
@@ -369,7 +372,7 @@ public class SettingsManager {
 				.show();
 				break;
 				
-			/*case 6: // Min delay per frame
+			case 6: // Min delay per frame
 				final EditText edit3 = new EditText(mMainActivity);
 				edit3.setText(Integer.toString(mMinDelay));
 				edit3.setInputType(InputType.TYPE_CLASS_NUMBER);
@@ -378,9 +381,13 @@ public class SettingsManager {
 				.setPositiveButton(res.getString(R.string.ok), new DialogInterface.OnClickListener() {
 					@Override
 					public void onClick(DialogInterface dialog, int which) {
-						if(edit3.getText().length() > 6)
+						try {
+							mMinDelay = Integer.parseInt(edit3.getText().toString());
+						} catch (NumberFormatException e) {
+							mMinDelay = 0;
+						}
+						if(mMinDelay > 1000000)
 							return;
-						mMinDelay   = Integer.parseInt(edit3.getText().toString());
 						mMinDelayMS = mMinDelay * 1000;
 						pref.edit().putInt(res.getString(R.string.pref_min_delay), mMinDelay).commit();
 						((TextView)view.findViewById(R.id.setting_value)).setText(Integer.toString(mMinDelay) + " s");
@@ -388,9 +395,9 @@ public class SettingsManager {
 				})
 				.setNegativeButton(res.getString(R.string.cancel), null)
 				.show();
-				break;*/
+				break;
 				
-			case 6: // Thread count
+			case 7: // Thread count
 				showSeekBarDialog(res.getString(R.string.thread_count), 1, 16, mMaxThreadCount, 
 						new OnSeekBarDialogPositiveButton() {
 					@Override
@@ -402,7 +409,7 @@ public class SettingsManager {
 				});
 				break;
 				
-			case 7: // Path
+			case 8: // Path
 				final EditText edit = new EditText(mMainActivity);
 				edit.setText(mPath);
 				edit.setSingleLine();

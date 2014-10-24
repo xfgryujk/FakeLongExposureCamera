@@ -249,7 +249,7 @@ public class CameraPreview extends SurfaceView implements SurfaceHolder.Callback
 	}
 	
 	protected int mThreadCount = 0;
-	//protected long mLastFrameTime;
+	protected long mNextFrameTime;
 	protected class ExposingThread implements Runnable {
 		@Override
 		public void run() {
@@ -263,49 +263,59 @@ public class CameraPreview extends SurfaceView implements SurfaceHolder.Callback
 			/** RGB1 RGB2 ... */
 			int[] previewRGBData = new int[mPictureWidth * mPictureHeight];
 			int frameCount;
+			boolean shouldStop = false;
+			int n;
 			
 			while(mIsExposing)
 			{
-		        // Get preview data in RGB
 				synchronized (CameraPreview.this) {
 					//Log.i(TAG, id + " is getting preview data");
-		            
-		            // Delay
-		            /*int n = (int)Math.ceil((mLastFrameTime - System.currentTimeMillis() + SettingsManager.mMinDelayMS) / 200);
-		            Log.i(TAG, "n = " + n);
-		            for(int i = 0; i < n && mIsExposing; i++)
-		            	try {
-							//Thread.sleep(200);
-		            		CameraPreview.this.wait(200);
-						} catch (InterruptedException e) {
-							e.printStackTrace();
-						}
-		            mLastFrameTime = System.currentTimeMillis();*/
-		            
+					// Wait for preview data
 		            try {
 		            	CameraPreview.this.wait();
 		            } catch(InterruptedException e) {
 		                e.printStackTrace();
 		            }
-		            if(!mIsExposing && mFrameCount > 0) // 1 frame at least
-		            	break;
 		            
-		            frameCount  = ++mFrameCount;
-		            previewData = mPreviewData;
+					// Calculate delay time
+					long time = System.currentTimeMillis();
+			        n = (int)Math.ceil((double)(mNextFrameTime - time) / 200.0d);
+			        mNextFrameTime = (n < 0 ? time : mNextFrameTime) + SettingsManager.mMinDelayMS;
+				}
+				// Delay
+	            for(int i = 0; i < n && mIsExposing; i++)
+	            	try {
+						Thread.sleep(200);
+					} catch (InterruptedException e) {
+						e.printStackTrace();
+					}
+		            
+				synchronized (CameraPreview.this) {
+		            frameCount = ++mFrameCount;
+		            if(!mIsExposing && frameCount > 1) // 1 frame at least
+		            	break;
 		            
 		            // Auto stop
 		            switch(SettingsManager.mAutoStop)
 		            {
 		            case 1: // frame
-		            	if(frameCount >= SettingsManager.mAutoStopTime)
-		            		mHandler.sendEmptyMessage(MSG_STOP_EXPOSING);
+		            	shouldStop = frameCount >= SettingsManager.mAutoStopTime;
 		            	break;
 		            	
 		            case 2: // second
-		            	if(System.currentTimeMillis() - mStartTime >= SettingsManager.mAutoStopTimeMS)
-		            		mHandler.sendEmptyMessage(MSG_STOP_EXPOSING);
+		            	shouldStop = System.currentTimeMillis() - mStartTime >= SettingsManager.mAutoStopTimeMS;
 		            	break;
 		            }
+	            	if(shouldStop)
+	            	{
+	            		if(!mHandler.hasMessages(MSG_UPDATE_PREVIEW))
+	            			mHandler.sendEmptyMessage(MSG_STOP_EXPOSING);
+	            		if(frameCount > 1) // 1 frame at least
+	            			break;
+	            	}
+		            
+		            // Get preview data
+		            previewData = mPreviewData;
 		        }
 				//Log.i(TAG, id + " is decoding");
 		        decodeYUV420SP(previewRGBData, previewData, mPictureWidth, mPictureHeight);
@@ -318,17 +328,19 @@ public class CameraPreview extends SurfaceView implements SurfaceHolder.Callback
 						mHandler.sendEmptyMessage(MSG_UPDATE_PREVIEW);
 				}
 			}
+			
 			synchronized (CameraPreview.this) {
 				Log.i(TAG, id + " is exiting, mThreadCount = " + mThreadCount);
 				if(--mThreadCount > 0) // Is not the last thread
 					return;
 			}
-			previewData    = null;
-			previewRGBData = null;
-			blenderUninitialize();
+			
+			// For the last thread
 			
 			// Exposing finish
 			mHandler.sendEmptyMessage(MSG_EXPOSING_FINISH);
+			
+			blenderUninitialize();
 		}
 	}
 	
