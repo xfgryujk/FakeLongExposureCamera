@@ -45,8 +45,7 @@ public class SettingsManager {
 	public static int mAutoStop;
 	public static int mAutoStopTime;
 	public static long mAutoStopTimeMS;
-	public static int mMinDelay;
-	public static long mMinDelayMS;
+	public static long mMinDelay;
 	public static int mMaxThreadCount;
 	public static String mPath;
 	
@@ -68,8 +67,7 @@ public class SettingsManager {
         mAutoStopTime   = pref.getInt(res.getString(R.string.pref_auto_stop_time), 0);
         if(mAutoStop == 2)
         	mAutoStopTimeMS = mAutoStopTime * 1000;
-        mMinDelay       = pref.getInt(res.getString(R.string.pref_min_delay), 0);
-        mMinDelayMS     = mMinDelay * 1000;
+        mMinDelay       = pref.getLong(res.getString(R.string.pref_min_delay), 0);
         mMaxThreadCount = pref.getInt(res.getString(R.string.pref_thread_count), Math.min(16, Runtime.getRuntime().availableProcessors() * 2));
         mPath           = pref.getString(res.getString(R.string.pref_path), Environment.getExternalStorageDirectory().getPath() + "/FakeLongExposureCamera");
 	}
@@ -131,7 +129,7 @@ public class SettingsManager {
 			
 			item = new HashMap<String, String>();
 			item.put("name", res.getString(R.string.min_delay_per_frame));
-			item.put("value", Integer.toString(mMinDelay) + " s");
+			item.put("value", Long.toString(mMinDelay) + " ms");
 			data.add(item);
 			
 			item = new HashMap<String, String>();
@@ -374,23 +372,24 @@ public class SettingsManager {
 				
 			case 6: // Min delay per frame
 				final EditText edit3 = new EditText(mMainActivity);
-				edit3.setText(Integer.toString(mMinDelay));
+				edit3.setText(Long.toString(mMinDelay));
 				edit3.setInputType(InputType.TYPE_CLASS_NUMBER);
 				builder.setTitle(res.getString(R.string.min_delay_per_frame))
 				.setView(edit3)
 				.setPositiveButton(res.getString(R.string.ok), new DialogInterface.OnClickListener() {
 					@Override
 					public void onClick(DialogInterface dialog, int which) {
+						long time;
 						try {
-							mMinDelay = Integer.parseInt(edit3.getText().toString());
+							time = Long.parseLong(edit3.getText().toString());
 						} catch (NumberFormatException e) {
-							mMinDelay = 0;
+							time = 0;
 						}
-						if(mMinDelay > 1000000)
+						if(time > 1000000000)
 							return;
-						mMinDelayMS = mMinDelay * 1000;
-						pref.edit().putInt(res.getString(R.string.pref_min_delay), mMinDelay).commit();
-						((TextView)view.findViewById(R.id.setting_value)).setText(Integer.toString(mMinDelay) + " s");
+						mMinDelay = time;
+						pref.edit().putLong(res.getString(R.string.pref_min_delay), mMinDelay).commit();
+						((TextView)view.findViewById(R.id.setting_value)).setText(Long.toString(mMinDelay) + " ms");
 					}
 				})
 				.setNegativeButton(res.getString(R.string.cancel), null)

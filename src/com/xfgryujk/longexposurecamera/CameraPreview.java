@@ -279,13 +279,13 @@ public class CameraPreview extends SurfaceView implements SurfaceHolder.Callback
 		            
 					// Calculate delay time
 					long time = System.currentTimeMillis();
-			        n = (int)Math.ceil((double)(mNextFrameTime - time) / 200.0d);
-			        mNextFrameTime = (n < 0 ? time : mNextFrameTime) + SettingsManager.mMinDelayMS;
+			        n = (int)Math.ceil((double)(mNextFrameTime - time) / 100.0d);
+			        mNextFrameTime = (n < 0 ? time : mNextFrameTime) + SettingsManager.mMinDelay;
 				}
 				// Delay
 	            for(int i = 0; i < n && mIsExposing; i++)
 	            	try {
-						Thread.sleep(200);
+						Thread.sleep(100);
 					} catch (InterruptedException e) {
 						e.printStackTrace();
 					}
