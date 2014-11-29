@@ -35,6 +35,11 @@ import android.widget.TextView;
 public class SettingsManager {
 	protected static MainActivity mMainActivity;
 	
+	public static View mDialogView = null;
+	public static ListView mListView = null;
+	public static SimpleAdapter mAdapter = null;
+	public static Dialog mDialog = null;
+	
 	public static int mBlendingMode;
 	public static int mAlpha;
 	public static int mEV;
@@ -71,104 +76,111 @@ public class SettingsManager {
         mMaxThreadCount = pref.getInt(res.getString(R.string.pref_thread_count), Math.min(16, Runtime.getRuntime().availableProcessors() * 2));
         mPath           = pref.getString(res.getString(R.string.pref_path), Environment.getExternalStorageDirectory().getPath() + "/FakeLongExposureCamera");
 	}
+	
+	@SuppressLint("InflateParams")
+	protected static void initializeDialog() {
+		mDialogView = LayoutInflater.from(mMainActivity).inflate(R.layout.settings_dialog, null);
+
+		// Set list
+		mListView = (ListView)mDialogView.findViewById(R.id.settings_list);
+		mListView.setOnItemClickListener(mOnDialogItemClick);
+		
+		// Set items
+		List<HashMap<String, String>> data = new ArrayList<HashMap<String, String>>();
+		HashMap<String, String> item;
+        Resources res = mMainActivity.getResources();
+		
+		item = new HashMap<String, String>();
+		item.put("name", res.getString(R.string.blending_mode));
+		item.put("value", res.getStringArray(R.array.blending_modes_description)[mBlendingMode]);
+		data.add(item);
+		
+		item = new HashMap<String, String>();
+		item.put("name", res.getString(R.string.EV));
+		item.put("value", Integer.toString(mEV));
+		data.add(item);
+		
+		item = new HashMap<String, String>();
+		item.put("name", res.getString(R.string.white_balance));
+		item.put("value", mWhiteBalance);
+		data.add(item);
+		
+		item = new HashMap<String, String>();
+		item.put("name", res.getString(R.string.resolution));
+		Camera camera = mMainActivity.mCameraPreview.getCamera();
+		Parameters params = camera.getParameters();
+		List<Size> sizes = params.getSupportedPreviewSizes();
+		String[] sizesString = new String[sizes.size()];
+		for(int i = 0; i < sizes.size(); i++)
+			sizesString[i] = sizes.get(i).width + " * " + sizes.get(i).height;
+		item.put("value", sizesString[mResolution]);
+		data.add(item);
+		
+		item = new HashMap<String, String>();
+		item.put("name", res.getString(R.string.ISO));
+		item.put("value", mISO);
+		data.add(item);
+		
+		item = new HashMap<String, String>();
+		item.put("name", res.getString(R.string.auto_stop));
+		if(mAutoStop == 0)
+			item.put("value", res.getStringArray(R.array.auto_stop_types)[0]);
+		else
+			item.put("value", Integer.toString(mAutoStopTime) + " " + res.getStringArray(R.array.auto_stop_types)[mAutoStop]);
+		data.add(item);
+		
+		item = new HashMap<String, String>();
+		item.put("name", res.getString(R.string.min_delay_per_frame));
+		item.put("value", Long.toString(mMinDelay) + " ms");
+		data.add(item);
+		
+		item = new HashMap<String, String>();
+		item.put("name", res.getString(R.string.thread_count));
+		item.put("value", Integer.toString(mMaxThreadCount));
+		data.add(item);
+		
+		item = new HashMap<String, String>();
+		item.put("name", res.getString(R.string.path));
+		item.put("value", mPath);
+		data.add(item);
+		
+		mAdapter = new SimpleAdapter(mMainActivity, 
+				data, R.layout.settings_list, 
+				new String[] {"name", "value"}, 
+				new int[] {R.id.setting_name, R.id.setting_value}
+		);
+		mListView.setAdapter(mAdapter);
+		
+		// Set dialog
+		mDialog = new Dialog(mMainActivity, R.style.settingsDialog);
+		mDialog.setContentView(mDialogView);
+		mDialog.setCanceledOnTouchOutside(true);
+	}
 
 	/** Show settings dialog */
-	public static final OnClickListener mOnButtonSettingClick = new OnClickListener() { 
-		@SuppressLint("InflateParams")
+	public static final OnClickListener mOnButtonSettingClick = new OnClickListener() {
 		@Override
 		public void onClick(View buttonView) {
-			View view = LayoutInflater.from(mMainActivity).inflate(R.layout.settings_dialog, null);
-
-			// Set list
-			ListView listView = (ListView)view.findViewById(R.id.settings_list);
-			listView.setOnItemClickListener(mOnDialogItemClick);
-			
-			// Set items
-			List<HashMap<String, String>> data = new ArrayList<HashMap<String, String>>();
-			HashMap<String, String> item;
-	        Resources res = mMainActivity.getResources();
-			
-			item = new HashMap<String, String>();
-			item.put("name", res.getString(R.string.blending_mode));
-			item.put("value", res.getStringArray(R.array.blending_modes_description)[mBlendingMode]);
-			data.add(item);
-			
-			item = new HashMap<String, String>();
-			item.put("name", res.getString(R.string.EV));
-			item.put("value", Integer.toString(mEV));
-			data.add(item);
-			
-			item = new HashMap<String, String>();
-			item.put("name", res.getString(R.string.white_balance));
-			item.put("value", mWhiteBalance);
-			data.add(item);
-			
-			item = new HashMap<String, String>();
-			item.put("name", res.getString(R.string.resolution));
-			Camera camera = mMainActivity.mCameraPreview.getCamera();
-			Parameters params = camera.getParameters();
-			List<Size> sizes = params.getSupportedPreviewSizes();
-			String[] sizesString = new String[sizes.size()];
-			for(int i = 0; i < sizes.size(); i++)
-				sizesString[i] = sizes.get(i).width + " * " + sizes.get(i).height;
-			item.put("value", sizesString[mResolution]);
-			data.add(item);
-			
-			item = new HashMap<String, String>();
-			item.put("name", res.getString(R.string.ISO));
-			item.put("value", mISO);
-			data.add(item);
-			
-			item = new HashMap<String, String>();
-			item.put("name", res.getString(R.string.auto_stop));
-			if(mAutoStop == 0)
-				item.put("value", res.getStringArray(R.array.auto_stop_types)[0]);
-			else
-				item.put("value", Integer.toString(mAutoStopTime) + " " + res.getStringArray(R.array.auto_stop_types)[mAutoStop]);
-			data.add(item);
-			
-			item = new HashMap<String, String>();
-			item.put("name", res.getString(R.string.min_delay_per_frame));
-			item.put("value", Long.toString(mMinDelay) + " ms");
-			data.add(item);
-			
-			item = new HashMap<String, String>();
-			item.put("name", res.getString(R.string.thread_count));
-			item.put("value", Integer.toString(mMaxThreadCount));
-			data.add(item);
-			
-			item = new HashMap<String, String>();
-			item.put("name", res.getString(R.string.path));
-			item.put("value", mPath);
-			data.add(item);
-			
-			SimpleAdapter adapter = new SimpleAdapter(mMainActivity, 
-					data, R.layout.settings_list, 
-					new String[] {"name", "value"}, 
-					new int[] {R.id.setting_name, R.id.setting_value}
-			);
-			listView.setAdapter(adapter);
-			
-			// Set dialog
-			Dialog dialog = new Dialog(mMainActivity, R.style.settingsDialog);
-			dialog.setContentView(view);
-			Window dialogWindow = dialog.getWindow();
+			if(mDialog == null)
+				initializeDialog();
+			Window dialogWindow = mDialog.getWindow();
 			DisplayMetrics dm = new DisplayMetrics();
 			mMainActivity.getWindowManager().getDefaultDisplay().getMetrics(dm);
 	        LayoutParams lp = dialogWindow.getAttributes();
 	        lp.gravity = Gravity.LEFT | Gravity.TOP;
 	        lp.x       = 30;
 	        lp.y       = 20;
-	        lp.height  = Math.min(dm.heightPixels - 40, (int)((data.size() * 36 + 3.5) * dm.density));
-	        dialog.setCanceledOnTouchOutside(true);
-	        dialog.show();
+	        lp.width   = (int)(300 * dm.density);
+	        lp.height  = Math.min(dm.heightPixels - 40, (int)((mListView.getCount() * 36 + 3.5) * dm.density));
+	        mDialog.show();
 	        dialogWindow.setAttributes(lp);
 		}
 	};
 	
 	protected static OnItemClickListener mOnDialogItemClick = new OnItemClickListener() {
 		@Override
-		public void onItemClick(AdapterView<?> adapterView, final View view, int position, long id) {
+		@SuppressWarnings("unchecked")
+		public void onItemClick(final AdapterView<?> adapterView, final View view, final int position, long id) {
 			final Resources res = mMainActivity.getResources();
 	        final SharedPreferences pref = PreferenceManager.getDefaultSharedPreferences(mMainActivity);
 			final Camera camera = mMainActivity.mCameraPreview.getCamera();
@@ -187,7 +199,8 @@ public class SettingsManager {
 						{
 							mBlendingMode = which;
 							pref.edit().putInt(res.getString(R.string.pref_blending_mode), mBlendingMode).commit();
-							((TextView)view.findViewById(R.id.setting_value)).setText(blendingModes[which]);
+							((HashMap<String, String>)adapterView.getItemAtPosition(position)).put("value", blendingModes[mBlendingMode]);
+							mAdapter.notifyDataSetChanged();
 						}
 						else // Set alpha
 							showSeekBarDialog(res.getString(R.string.opacity), 1, 254, mAlpha, 
@@ -196,7 +209,8 @@ public class SettingsManager {
 								public void onClick(int progress) {
 									mBlendingMode = which;
 									pref.edit().putInt(res.getString(R.string.pref_blending_mode), mBlendingMode).commit();
-									((TextView)view.findViewById(R.id.setting_value)).setText(blendingModes[which]);
+									((HashMap<String, String>)adapterView.getItemAtPosition(position)).put("value", blendingModes[mBlendingMode]);
+									mAdapter.notifyDataSetChanged();
 									mAlpha = progress;
 									pref.edit().putInt(res.getString(R.string.pref_alpha), mAlpha).commit();
 								}
@@ -214,7 +228,8 @@ public class SettingsManager {
 					public void onClick(int progress) {
 						mEV = progress;
 						pref.edit().putInt(res.getString(R.string.pref_EV), mEV).commit();
-						((TextView)view.findViewById(R.id.setting_value)).setText(Integer.toString(mEV));
+						((HashMap<String, String>)adapterView.getItemAtPosition(position)).put("value", Integer.toString(mEV));
+						mAdapter.notifyDataSetChanged();
 						params.setExposureCompensation(mEV);
 						camera.setParameters(params);
 					}
@@ -229,7 +244,8 @@ public class SettingsManager {
 					public void onClick(DialogInterface dialog, int which) {
 						mWhiteBalance = whiteBalances.get(which);
 						pref.edit().putString(res.getString(R.string.pref_white_balance), mWhiteBalance).commit();
-						((TextView)view.findViewById(R.id.setting_value)).setText(whiteBalances.get(which));
+						((HashMap<String, String>)adapterView.getItemAtPosition(position)).put("value", whiteBalances.get(which));
+						mAdapter.notifyDataSetChanged();
 						params.setWhiteBalance(mWhiteBalance);
 						camera.setParameters(params);
 					}
@@ -251,7 +267,8 @@ public class SettingsManager {
 						{
 							mResolution = which;
 							pref.edit().putInt(res.getString(R.string.pref_resolution), mResolution).commit();
-							((TextView)view.findViewById(R.id.setting_value)).setText(sizesString[which]);
+							((HashMap<String, String>)adapterView.getItemAtPosition(position)).put("value", sizesString[which]);
+							mAdapter.notifyDataSetChanged();
 							mMainActivity.mCameraPreview.resetCamera();
 						}
 					}
@@ -309,7 +326,8 @@ public class SettingsManager {
 					public void onClick(DialogInterface dialog, int which) {
 						mISO = ISOs[which];
 						pref.edit().putString(res.getString(R.string.pref_ISO), mISO).commit();
-						((TextView)view.findViewById(R.id.setting_value)).setText(mISO);
+						((HashMap<String, String>)adapterView.getItemAtPosition(position)).put("value", mISO);
+						mAdapter.notifyDataSetChanged();
 						params.set("iso", mISO);
 						params.set("iso-speed", mISO);
 						params.set("nv-picture-iso", mISO);
@@ -332,7 +350,8 @@ public class SettingsManager {
 						{
 							mAutoStop = 0;
 							pref.edit().putInt(res.getString(R.string.pref_auto_stop), mAutoStop).commit();
-							((TextView)view.findViewById(R.id.setting_value)).setText(types[0]);
+							((HashMap<String, String>)adapterView.getItemAtPosition(position)).put("value", types[0]);
+							mAdapter.notifyDataSetChanged();
 							return;
 						}
 						
@@ -358,8 +377,9 @@ public class SettingsManager {
 								mAutoStopTime   = time;
 								mAutoStopTimeMS = mAutoStopTime * 1000;
 								pref.edit().putInt(res.getString(R.string.pref_auto_stop_time), mAutoStopTime).commit();
-								((TextView)view.findViewById(R.id.setting_value))
-									.setText(Integer.toString(mAutoStopTime) + " " + types[mAutoStop]);
+								((HashMap<String, String>)adapterView.getItemAtPosition(position))
+									.put("value", Integer.toString(mAutoStopTime) + " " + types[mAutoStop]);
+								mAdapter.notifyDataSetChanged();
 							}
 						})
 						.setNegativeButton(res.getString(R.string.cancel), null)
@@ -389,7 +409,8 @@ public class SettingsManager {
 							return;
 						mMinDelay = time;
 						pref.edit().putLong(res.getString(R.string.pref_min_delay), mMinDelay).commit();
-						((TextView)view.findViewById(R.id.setting_value)).setText(Long.toString(mMinDelay) + " ms");
+						((HashMap<String, String>)adapterView.getItemAtPosition(position)).put("value", Long.toString(mMinDelay) + " ms");
+						mAdapter.notifyDataSetChanged();
 					}
 				})
 				.setNegativeButton(res.getString(R.string.cancel), null)
@@ -403,7 +424,8 @@ public class SettingsManager {
 					public void onClick(int progress) {
 						mMaxThreadCount = progress;
 						pref.edit().putInt(res.getString(R.string.pref_thread_count), mMaxThreadCount).commit();
-						((TextView)view.findViewById(R.id.setting_value)).setText(Integer.toString(mMaxThreadCount));
+						((HashMap<String, String>)adapterView.getItemAtPosition(position)).put("value", Integer.toString(mMaxThreadCount));
+						mAdapter.notifyDataSetChanged();
 					}
 				});
 				break;
@@ -419,7 +441,8 @@ public class SettingsManager {
 					public void onClick(DialogInterface dialog, int which) {
 						mPath = edit.getText().toString();
 						pref.edit().putString(res.getString(R.string.pref_path), mPath).commit();
-						((TextView)view.findViewById(R.id.setting_value)).setText(mPath);
+						((HashMap<String, String>)adapterView.getItemAtPosition(position)).put("value", mPath);
+						mAdapter.notifyDataSetChanged();
 					}
 				})
 				.setNegativeButton(res.getString(R.string.cancel), null)

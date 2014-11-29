@@ -213,13 +213,14 @@ public class CameraPreview extends SurfaceView implements SurfaceHolder.Callback
 	public void onShutterClick() {
 		if(mIsExposing)
 		{
+			mActivity.mButtonShutter.setVisibility(INVISIBLE);
+			
 			Log.i(TAG, "Stop exposing");
 			mIsExposing = false;
-			// Wait for exposing threads
-			mActivity.mButtonShutter.setVisibility(INVISIBLE);
     		synchronized (this) {
     			notifyAll();
     		}
+			// Clean up in the last thread
 		}
 		else
 		{
@@ -235,7 +236,6 @@ public class CameraPreview extends SurfaceView implements SurfaceHolder.Callback
 			// Start exposing threads
 			mIsExposing     = true;
 			mStartTime      = System.currentTimeMillis();
-			//mLastFrameTime  = 0;
 			for(int i = 0; i < SettingsManager.mMaxThreadCount; i++)
 				(new Thread(new ExposingThread())).start();
 			
@@ -283,6 +283,7 @@ public class CameraPreview extends SurfaceView implements SurfaceHolder.Callback
 			        mNextFrameTime = (n < 0 ? time : mNextFrameTime) + SettingsManager.mMinDelay;
 				}
 				// Delay
+				//Log.i(TAG, id + " is delaying");
 	            for(int i = 0; i < n && mIsExposing; i++)
 	            	try {
 						Thread.sleep(100);

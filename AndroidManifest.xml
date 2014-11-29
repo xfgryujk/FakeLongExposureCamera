@@ -2,14 +2,15 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
     package="com.xfgryujk.longexposurecamera"
     android:versionCode="3"
-    android:versionName="1.2" >
+    android:versionName="1.2.1" >
     
      <supports-screens
+        android:resizeable="true"
         android:anyDensity="true"
         android:largeScreens="true"
         android:normalScreens="true"
-        android:resizeable="true"
-        android:smallScreens="true" />
+        android:smallScreens="true"
+        android:xlargeScreens="true"/>
 
     <uses-sdk
         android:minSdkVersion="8"

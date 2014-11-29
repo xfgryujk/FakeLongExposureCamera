@@ -19,8 +19,6 @@ import android.widget.ImageView;
 import android.widget.Toast;
 
 public class PreviewActivity extends Activity {
-	public static final String EXTRA_BITMAP = "ResultBitmap";
-	
 	public ImageView mResultPreview;
 	public Button mButtonCancel;
 	public Button mButtonSave;
