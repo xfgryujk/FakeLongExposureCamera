@@ -61,7 +61,8 @@ public class PreviewActivity extends Activity {
 			// Create file
 			File dir = new File(SettingsManager.mPath);
 			if(!dir.exists())
-				if(!dir.mkdirs()) {
+				if(!dir.mkdirs())
+				{
 					Toast.makeText(this, getResources().getString(R.string.failed_to_create_directory), 
 		            		Toast.LENGTH_SHORT).show();
 					return;

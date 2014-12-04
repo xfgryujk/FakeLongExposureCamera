@@ -258,16 +258,16 @@ public class CameraPreview extends SurfaceView implements SurfaceHolder.Callback
 				mThreadCount++;
 				Log.i(TAG, id + " starts, mThreadCount = " + mThreadCount);
 			}
+			
+			int frameCount;
 			/** YUV */
 			byte[] previewData;
 			/** RGB1 RGB2 ... */
 			int[] previewRGBData = new int[mPictureWidth * mPictureHeight];
-			int frameCount;
-			boolean shouldStop = false;
-			int n;
 			
 			while(mIsExposing)
 			{
+				int n;
 				synchronized (CameraPreview.this) {
 					//Log.i(TAG, id + " is getting preview data");
 					// Wait for preview data
@@ -297,6 +297,7 @@ public class CameraPreview extends SurfaceView implements SurfaceHolder.Callback
 		            	break;
 		            
 		            // Auto stop
+					boolean shouldStop = false;
 		            switch(SettingsManager.mAutoStop)
 		            {
 		            case 1: // frame

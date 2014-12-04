@@ -31,6 +31,7 @@ import android.widget.SeekBar;
 import android.widget.SeekBar.OnSeekBarChangeListener;
 import android.widget.SimpleAdapter;
 import android.widget.TextView;
+import android.widget.Toast;
 
 public class SettingsManager {
 	protected static MainActivity mMainActivity;
@@ -73,7 +74,7 @@ public class SettingsManager {
         if(mAutoStop == 2)
         	mAutoStopTimeMS = mAutoStopTime * 1000;
         mMinDelay       = pref.getLong(res.getString(R.string.pref_min_delay), 0);
-        mMaxThreadCount = pref.getInt(res.getString(R.string.pref_thread_count), Math.min(16, Runtime.getRuntime().availableProcessors() * 2));
+        mMaxThreadCount = pref.getInt(res.getString(R.string.pref_thread_count), Math.min(16, (int)(Runtime.getRuntime().availableProcessors() * 1.5f)));
         mPath           = pref.getString(res.getString(R.string.pref_path), Environment.getExternalStorageDirectory().getPath() + "/FakeLongExposureCamera");
 	}
 	
@@ -168,9 +169,8 @@ public class SettingsManager {
 			mMainActivity.getWindowManager().getDefaultDisplay().getMetrics(dm);
 	        LayoutParams lp = dialogWindow.getAttributes();
 	        lp.gravity = Gravity.LEFT | Gravity.TOP;
-	        lp.x       = 30;
-	        lp.y       = 20;
-	        lp.width   = (int)(300 * dm.density);
+	        lp.x       = (int)(20.0f * dm.density);
+			lp.y       = (int)(13.3f * dm.density);
 	        lp.height  = Math.min(dm.heightPixels - 40, (int)((mListView.getCount() * 36 + 3.5) * dm.density));
 	        mDialog.show();
 	        dialogWindow.setAttributes(lp);
@@ -278,60 +278,53 @@ public class SettingsManager {
 				break;
 				
 			case 4: // ISO ***** Not every device support!
-				// Test
-				/*String flat = params.flatten();
-				Log.i(TAG, flat);
-				String[] isoValues	= null;
+				String flat = params.flatten();
+				//Log.i("ISO test", flat);
 				String values_keyword = null;
-				String iso_keyword	= null;
-				if(flat.contains("iso-values")) {
-					// most used keywords
+				if(flat.contains("iso-values")) // Most used keywords
 					values_keyword = "iso-values";
-					iso_keyword	= "iso";
-				} else if(flat.contains("iso-mode-values")) {
-					// google galaxy nexus keywords
+				else if(flat.contains("iso-mode-values")) // Google galaxy nexus keywords
 					values_keyword = "iso-mode-values";
-					iso_keyword	= "iso";
-				} else if(flat.contains("iso-speed-values")) {
-					// micromax a101 keywords
+				else if(flat.contains("iso-speed-values")) // Micromax a101 keywords
 					values_keyword = "iso-speed-values";
-					iso_keyword	= "iso-speed";
-				} else if(flat.contains("nv-picture-iso-values")) {
-					// LG dual p990 keywords
+				else if(flat.contains("nv-picture-iso-values")) // LG dual p990 keywords
 					values_keyword = "nv-picture-iso-values";
-					iso_keyword	= "nv-picture-iso";
-				}
-				// add other eventual keywords here...
-				if(iso_keyword != null) {
-					// flatten contains the iso key!!
-					String iso = flat.substring(flat.indexOf(values_keyword));
+				// Add other eventual keywords here...
+				String iso = null;
+				if(values_keyword != null)
+				{
+					// Flatten contains the ISO key!!
+					iso = flat.substring(flat.indexOf(values_keyword));
 					iso = iso.substring(iso.indexOf("=") + 1);
 					if(iso.contains(";"))
 						iso = iso.substring(0, iso.indexOf(";"));
-
-					isoValues = iso.split(",");
 					
-					for(String str : isoValues)
-						Log.i(TAG, str);
-				} else {
-					// iso not supported in a known way
-					Log.i(TAG, "ISO is not supported");
-				}*/
+					//for(String str : isoValues)
+					//	Log.i("ISO test", str);
+				}
+				//else // ISO not supported in a known way
+				//	Log.i("ISO test", "ISO is not supported");
+
+				final String[] defaultISOs = {"auto", "50", "100", "200", "400", "800", "1600", "3200"};
+				final String[] isoValues = values_keyword != null ? iso.split(",") : defaultISOs;
 				
-				final String[] ISOs = {"auto", "50", "100", "200", "400", "800"
-						, "1600", "3200", "sports", "night", "movie"};
 				builder.setTitle(res.getString(R.string.ISO))
-				.setItems(ISOs, new DialogInterface.OnClickListener() {
-					@Override
+				.setItems(isoValues, new DialogInterface.OnClickListener() {
 					public void onClick(DialogInterface dialog, int which) {
-						mISO = ISOs[which];
-						pref.edit().putString(res.getString(R.string.pref_ISO), mISO).commit();
-						((HashMap<String, String>)adapterView.getItemAtPosition(position)).put("value", mISO);
-						mAdapter.notifyDataSetChanged();
-						params.set("iso", mISO);
-						params.set("iso-speed", mISO);
-						params.set("nv-picture-iso", mISO);
-						camera.setParameters(params);
+						params.set("iso", isoValues[which]);
+						params.set("iso-speed", isoValues[which]);
+						params.set("nv-picture-iso", isoValues[which]);
+						try {
+							camera.setParameters(params); // Will throw if this ISO is not supported
+							mISO = isoValues[which];
+							pref.edit().putString(res.getString(R.string.pref_ISO), mISO).commit();
+							((HashMap<String, String>)adapterView.getItemAtPosition(position)).put("value", mISO);
+							mAdapter.notifyDataSetChanged();
+						} catch(Exception e) {
+							e.printStackTrace();
+							Toast.makeText(mMainActivity, mMainActivity.getResources().getString(R.string.this_ISO_is_not_supported), 
+									Toast.LENGTH_SHORT).show();
+						}
 					}
 				})
 				.create()
